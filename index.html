@@ -725,7 +725,21 @@ async function fetchAll() {
     T = td.trades || [];
     const fd = await rf.json();
     FUND = fd.funding || [];
-    MOV = await rm.json();
+
+    // Movimientos: combinar servidor + respaldo local
+    const serverMov = await rm.json();
+    const localMov = loadLocalMov();
+    MOV = mergeMovimientos(serverMov, localMov);
+
+    // Si el servidor estaba vacío y recuperamos del local, re-subir al servidor
+    const serverWasEmpty = (!serverMov.account1 || !serverMov.account1.length) &&
+                           (!serverMov.account2 || !serverMov.account2.length);
+    const nowHasData = (MOV.account1 && MOV.account1.length) || (MOV.account2 && MOV.account2.length);
+    if (serverWasEmpty && nowHasData) {
+      await saveMovimientos(); // sube al servidor + actualiza local
+    } else {
+      saveLocalMov(); // mantener local sincronizado
+    }
 
     document.getElementById('loading-fill').style.width = '100%';
     setTimeout(() => document.getElementById('loading-bar').classList.remove('on'), 400);
@@ -1146,8 +1160,45 @@ function renderCalendario() {
 }
 
 // ═══════════════════════════════════════
-// MOVIMIENTOS
+// MOVIMIENTOS + respaldo localStorage
 // ═══════════════════════════════════════
+function loadLocalMov() {
+  try {
+    const raw = localStorage.getItem('lt-movimientos');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+
+function saveLocalMov() {
+  try {
+    localStorage.setItem('lt-movimientos', JSON.stringify(MOV));
+  } catch (e) {}
+}
+
+function mergeMovimientos(server, local) {
+  // Si el servidor está vacío pero hay datos locales → usar locales y re-subir
+  const serverEmpty = (!server.account1 || !server.account1.length) &&
+                      (!server.account2 || !server.account2.length);
+  const localHas = local && (
+    (local.account1 && local.account1.length) ||
+    (local.account2 && local.account2.length)
+  );
+  if (serverEmpty && localHas) {
+    return {
+      account1: local.account1 || [],
+      account2: local.account2 || [],
+      reserva_pct: local.reserva_pct != null ? local.reserva_pct : (server.reserva_pct || 25)
+    };
+  }
+  // Si el servidor tiene datos, priorizar servidor (y actualizar local)
+  return {
+    account1: (server.account1 && server.account1.length) ? server.account1 : (local?.account1 || []),
+    account2: (server.account2 && server.account2.length) ? server.account2 : (local?.account2 || []),
+    reserva_pct: server.reserva_pct != null ? server.reserva_pct : (local?.reserva_pct || 25)
+  };
+}
+
 function renderMovimientos() {
   const key = currentAccount === 2 ? 'account2' : 'account1';
   const list = (MOV[key] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -1194,6 +1245,10 @@ async function delMovimiento(idx) {
 }
 
 async function saveMovimientos() {
+  // 1. Siempre guardar en el navegador (respaldo local)
+  saveLocalMov();
+
+  // 2. Intentar guardar en el servidor
   const base = getUrl();
   if (!base) return;
   try {
@@ -1202,7 +1257,9 @@ async function saveMovimientos() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(MOV)
     });
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error('No se pudo guardar en servidor (se mantiene respaldo local):', e);
+  }
 }
 
 async function saveReserva() {
@@ -1234,6 +1291,11 @@ function exportCSV() {
 // ═══════════════════════════════════════
 document.getElementById('mov-date').value = new Date().toISOString().slice(0, 10);
 if (window.innerWidth <= 900) document.getElementById('menu-btn').style.display = 'inline-flex';
+
+// Cargar respaldo local al arrancar (por si el servidor aún no responde)
+const localBoot = loadLocalMov();
+if (localBoot) MOV = localBoot;
+
 if (getUrl()) {
   document.getElementById('srv-url').value = getUrl();
   fetchAll();
