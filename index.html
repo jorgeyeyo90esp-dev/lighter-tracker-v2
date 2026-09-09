@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Chart.js removed -->
 <style>
 :root {
   --font: 'Inter', system-ui, sans-serif;
@@ -267,15 +267,39 @@ body {
 .stat-val { font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
 .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
-.chart-wrap {
+.pane-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 8px;
   background: var(--card);
   border: 1px solid var(--border2);
   border-radius: var(--r);
-  padding: 18px;
-  height: 280px;
-  margin-bottom: 18px;
   box-shadow: var(--shadow);
 }
+.pane-tab {
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pane-tab:hover { background: var(--bg3); color: var(--text); }
+.pane-tab.active {
+  background: var(--gbg);
+  color: var(--green);
+  border-color: var(--green);
+}
+.pane-tab i { font-size: 16px; }
 .filters {
   display: flex;
   gap: 10px;
@@ -493,9 +517,18 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         <div class="stat"><div class="stat-label">Winrate</div><div class="stat-val neu" id="s-wr">—</div><div class="stat-sub" id="s-wr-sub">—</div></div>
       </div>
 
+      <!-- Pestañas (donde estaba el gráfico) -->
+      <div class="pane-tabs" id="pane-tabs">
+        <button class="pane-tab active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
+        <button class="pane-tab" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
+        <button class="pane-tab" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
+        <button class="pane-tab" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
+        <button class="pane-tab" data-pane="calendario" onclick="showPane('calendario')"><i class="ti ti-grid-dots"></i> Calendario</button>
+        <button class="pane-tab" data-pane="config" onclick="showPane('config')"><i class="ti ti-settings"></i> Config</button>
+      </div>
+
       <!-- DIARIO -->
       <div class="pane active" id="pane-diario">
-        <div class="chart-wrap"><canvas id="chart-equity"></canvas></div>
         <div class="filters">
           <select id="filter-days" onchange="renderDiario()">
             <option value="0">Todo el historial</option>
@@ -517,24 +550,22 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         </div>
       </div>
 
-      <!-- MENSUAL -->
-      <div class="pane" id="pane-mensual">
-        <div class="chart-wrap"><canvas id="chart-mensual"></canvas></div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
-            <tbody id="tbody-mensual"><tr><td colspan="7" class="empty">—</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- SEMANAL -->
       <div class="pane" id="pane-semanal">
-        <div class="chart-wrap"><canvas id="chart-semanal"></canvas></div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
             <tbody id="tbody-semanal"><tr><td colspan="7" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MENSUAL -->
+      <div class="pane" id="pane-mensual">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
+            <tbody id="tbody-mensual"><tr><td colspan="7" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -617,7 +648,7 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
 
 <nav class="mobile-nav">
   <button class="active" onclick="showPane('diario')"><i class="ti ti-calendar"></i>Diario</button>
-  <button onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i>Mensual</button>
+  <button onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i>Semanal</button>
   <button onclick="showPane('activo')"><i class="ti ti-coin"></i>Activos</button>
   <button onclick="showPane('config')"><i class="ti ti-settings"></i>Config</button>
 </nav>
@@ -629,7 +660,7 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
 var currentAccount = 1;
 var S = {}, T = [], FUND = [];
 var MOV = { account1: [], account2: [], reserva_pct: 25 };
-var equityChart = null, mensualChart = null, semanalChart = null;
+// charts removed
 var iv = null;
 
 // ═══════════════════════════════════════
@@ -819,8 +850,11 @@ function showPane(id) {
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.pane === id);
   });
+  document.querySelectorAll('.pane-tab').forEach(n => {
+    n.classList.toggle('active', n.dataset.pane === id);
+  });
   document.querySelectorAll('.mobile-nav button').forEach((b, i) => {
-    const map = ['diario','mensual','activo','config'];
+    const map = ['diario','semanal','activo','config'];
     b.classList.toggle('active', map[i] === id);
   });
   document.getElementById('sidebar').classList.remove('open');
@@ -874,7 +908,7 @@ function weekKey(tsMs) {
 }
 
 // ═══════════════════════════════════════
-// DIARIO + EQUITY
+// DIARIO
 // ═══════════════════════════════════════
 function renderDiario() {
   const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null && !isNaN(t.pnl));
@@ -898,51 +932,10 @@ function renderDiario() {
   const sortedAsc = [...uniqueDays].sort((a, b) => a.localeCompare(b));
   let runPnl = 0;
   const balMap = {};
-  const equityLabels = [];
-  const equityData = [];
   sortedAsc.forEach(d => {
     balMap[d] = cap + runPnl;
     runPnl += (periodData[d]?.pnl || 0) + (dayFund[d] || 0);
-    equityLabels.push(d.slice(5));
-    equityData.push(+(cap + runPnl).toFixed(2));
   });
-
-  // Equity chart
-  if (equityChart) equityChart.destroy();
-  const ctx = document.getElementById('chart-equity');
-  if (ctx) {
-    equityChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: equityLabels,
-        datasets: [{
-          label: 'Equity',
-          data: equityData,
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34,197,94,.1)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            ticks: { color: '#71717a', font: { size: 11 } },
-            grid: { color: 'rgba(128,128,128,.08)' }
-          },
-          x: {
-            ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 10 },
-            grid: { display: false }
-          }
-        }
-      }
-    });
-  }
 
   let cum = closes.reduce((a, t) => a + t.pnl, 0) + Object.values(dayFund).reduce((a, v) => a + v, 0);
   document.getElementById('tbody-diario').innerHTML = uniqueDays.map(day => {
@@ -999,28 +992,6 @@ function renderMensual() {
       + '<td>' + wr + '%</td>'
       + '<td>' + reservaStr + '</td></tr>';
   }).join('');
-
-  // Chart
-  const asc = [...keys].reverse();
-  if (mensualChart) mensualChart.destroy();
-  mensualChart = new Chart(document.getElementById('chart-mensual'), {
-    type: 'bar',
-    data: {
-      labels: asc,
-      datasets: [
-        { label: 'P&L', data: asc.map(k => periodData[k].pnl), backgroundColor: asc.map(k => periodData[k].pnl >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)'), borderRadius: 4 },
-        { label: 'Funding', data: asc.map(k => fundMap[k] || 0), backgroundColor: 'rgba(59,130,246,.5)', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#a1a1aa', font: { size: 11 } } } },
-      scales: {
-        y: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,.08)' } },
-        x: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { display: false } }
-      }
-    }
-  });
 }
 
 function renderSemanal() {
@@ -1048,26 +1019,6 @@ function renderSemanal() {
       + '<td>' + wr + '%</td>'
       + '<td>' + reservaStr + '</td></tr>';
   }).join('');
-
-  const asc = [...keys].reverse();
-  if (semanalChart) semanalChart.destroy();
-  semanalChart = new Chart(document.getElementById('chart-semanal'), {
-    type: 'bar',
-    data: {
-      labels: asc.map(k => k.slice(5)),
-      datasets: [
-        { label: 'P&L', data: asc.map(k => periodData[k].pnl), backgroundColor: asc.map(k => periodData[k].pnl >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)'), borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,.08)' } },
-        x: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { display: false } }
-      }
-    }
-  });
 }
 
 // ═══════════════════════════════════════
