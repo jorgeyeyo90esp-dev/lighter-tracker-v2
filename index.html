@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighter Tracker v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --font: 'Inter', system-ui, sans-serif;
+  --r: 10px;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --amber: #f59e0b;
+}
+[data-theme="dark"] {
+  --bg: #0f0f11;
+  --bg2: #18181b;
+  --bg3: #27272a;
+  --text: #fafafa;
+  --text2: #a1a1aa;
+  --text3: #71717a;
+  --border: rgba(255,255,255,.08);
+  --border2: rgba(255,255,255,.14);
+  --gbg: rgba(34,197,94,.12);
+  --rbg: rgba(239,68,68,.12);
+  --card: #18181b;
+}
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg2: #ffffff;
+  --bg3: #f1f5f9;
+  --text: #0f172a;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --border: rgba(0,0,0,.06);
+  --border2: rgba(0,0,0,.12);
+  --gbg: rgba(34,197,94,.1);
+  --rbg: rgba(239,68,68,.1);
+  --card: #ffffff;
+  --green: #16a34a;
+  --red: #dc2626;
+}
+[data-theme="green"] {
+  --bg: #0a1210;
+  --bg2: #0f1a16;
+  --bg3: #15241e;
+  --text: #e2f5ec;
+  --text2: #7ab89a;
+  --text3: #4a7a62;
+  --border: rgba(80,180,120,.12);
+  --border2: rgba(80,180,120,.22);
+  --green: #2dd882;
+  --gbg: rgba(45,216,130,.12);
+  --rbg: rgba(239,68,68,.12);
+  --card: #0f1a16;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 100vh;
+  line-height: 1.5;
+}
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.neu { color: var(--text2); }
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar.open { display: flex; position: fixed; inset: 0; z-index: 200; }
+  .mobile-nav { display: flex !important; }
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px;
+  gap: 4px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 20px;
+}
+.logo-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+.logo h1 { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
+.logo .sub { font-size: 11px; color: var(--text3); }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all .15s;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--gbg); color: var(--green); }
+.nav-item i { font-size: 18px; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* Main */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.acct-sw {
+  display: flex;
+  gap: 4px;
+  background: var(--bg2);
+  border-radius: 20px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+.acct-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  background: transparent;
+  color: var(--text3);
+  transition: all .15s;
+}
+.acct-btn.active { background: var(--green); color: #fff; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font);
+  transition: all .15s;
+}
+.btn:hover { background: var(--bg3); }
+.btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-green:hover { filter: brightness(1.1); }
+.badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.badge.ok { background: var(--gbg); color: var(--green); }
+.badge.warn { background: rgba(245,158,11,.15); color: var(--amber); }
+.badge.err { background: var(--rbg); color: var(--red); }
+
+/* Content */
+.content { padding: 20px; flex: 1; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+.stat-label { font-size: 11px; color: var(--text3); font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px; }
+.stat-val { font-size: 20px; font-weight: 700; letter-spacing: -.4px; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.chart-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  height: 260px;
+  margin-bottom: 16px;
+}
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  align-items: center;
+}
+.filters select, .filters input {
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+}
+
+.tbl-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: auto;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  position: sticky;
+  top: 0;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--bg3); }
+.empty { text-align: center; color: var(--text3); padding: 40px !important; }
+
+.pane { display: none; }
+.pane.active { display: block; }
+
+/* Config */
+.config-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+.config-card h3 { font-size: 15px; margin-bottom: 6px; }
+.config-card p { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
+.field input, .field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+}
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.row .field { flex: 1; min-width: 120px; }
+.summary-bar {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+/* Loading */
+.loading-bar {
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  display: none;
+}
+.loading-bar.on { display: block; }
+.loading-bar .fill {
+  height: 100%;
+  background: var(--green);
+  width: 0%;
+  transition: width .3s;
+}
+
+/* Mobile nav */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  gap: 4px;
+  z-index: 100;
+  justify-content: space-around;
+}
+.mobile-nav button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-size: 11px;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.mobile-nav button.active { color: var(--green); background: var(--gbg); }
+.mobile-nav i { display: block; font-size: 18px; margin-bottom: 2px; }
+
+.theme-btns { display: flex; gap: 6px; }
+.tbtn {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.tbtn.active { border-color: var(--text); }
+.tbtn-dark { background: #18181b; }
+.tbtn-light { background: #f1f5f9; }
+.tbtn-green { background: #0f1a16; border: 1px solid #2dd882; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div>
+        <h1>Lighter Tracker</h1>
+        <span class="sub">v2 · Lighter + HL</span>
+      </div>
+    </div>
+    <button class="nav-item active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
+    <button class="nav-item" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
+    <button class="nav-item" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
+    <button class="nav-item" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
+    <button class="nav-item" data-pane="calendario" onclick="showPane('calendario')"><i class="ti ti-grid-dots"></i> Calendario</button>
+    <button class="nav-item" data-pane="config" onclick="showPane('config')"><i class="ti ti-settings"></i> Config</button>
+    <div class="sidebar-footer">
+      <div id="side-status">—</div>
+      <div class="theme-btns" style="margin-top:10px;">
+        <div class="tbtn tbtn-dark active" onclick="setTheme('dark')" title="Oscuro"></div>
+        <div class="tbtn tbtn-light" onclick="setTheme('light')" title="Claro"></div>
+        <div class="tbtn tbtn-green" onclick="setTheme('green')" title="Verde"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none;" id="menu-btn"><i class="ti ti-menu-2"></i></button>
+        <div class="acct-sw">
+          <button class="acct-btn active" id="acct1" onclick="switchAccount(1)">Lighter 1</button>
+          <button class="acct-btn" id="acct2" onclick="switchAccount(2)">Lighter 2</button>
+          <button class="acct-btn" id="acct3" onclick="switchAccount(3)">Hyperliquid</button>
+        </div>
+        <span class="badge ok" id="conn-badge">—</span>
+      </div>
+      <div class="top-actions">
+        <button class="btn" onclick="fetchAll()"><i class="ti ti-refresh"></i> Actualizar</button>
+        <button class="btn" onclick="exportCSV()"><i class="ti ti-download"></i> CSV</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="loading-bar" id="loading-bar"><div class="fill" id="loading-fill"></div></div>
+
+      <!-- Stats -->
+      <div class="stats" id="stats-grid">
+        <div class="stat"><div class="stat-label">P&L Total</div><div class="stat-val neu" id="s-pnl">—</div><div class="stat-sub" id="s-pnl-sub">trades + funding</div></div>
+        <div class="stat"><div class="stat-label">P&L Hoy</div><div class="stat-val neu" id="s-today">—</div><div class="stat-sub" id="s-today-sub">—</div></div>
+        <div class="stat"><div class="stat-label">P&L 7 días</div><div class="stat-val neu" id="s-p7">—</div><div class="stat-sub">última semana</div></div>
+        <div class="stat"><div class="stat-label">Funding</div><div class="stat-val neu" id="s-fund">—</div><div class="stat-sub">acumulado</div></div>
+        <div class="stat"><div class="stat-label">Fees</div><div class="stat-val neu" id="s-fee">—</div><div class="stat-sub">comisiones</div></div>
+        <div class="stat"><div class="stat-label">Capital</div><div class="stat-val neu" id="s-total">—</div><div class="stat-sub" id="s-total-sub">neto + P&L</div></div>
+        <div class="stat"><div class="stat-label">Rentabilidad</div><div class="stat-val neu" id="s-rent">—</div><div class="stat-sub" id="s-rent-sub">sobre capital</div></div>
+        <div class="stat"><div class="stat-label">Winrate</div><div class="stat-val neu" id="s-wr">—</div><div class="stat-sub" id="s-wr-sub">—</div></div>
+      </div>
+
+      <!-- DIARIO -->
+      <div class="pane active" id="pane-diario">
+        <div class="chart-wrap"><canvas id="chart-equity"></canvas></div>
+        <div class="filters">
+          <select id="filter-days" onchange="renderDiario()">
+            <option value="0">Todo el historial</option>
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Trades</th><th>P&L trades</th><th>Funding</th>
+                <th>Total</th><th>% Día</th><th>WR</th><th>Reserva</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-diario"><tr><td colspan="8" class="empty">Conecta el servidor en Config</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MENSUAL -->
+      <div class="pane" id="pane-mensual">
+        <div class="chart-wrap"><canvas id="chart-mensual"></canvas></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th></tr></thead>
+            <tbody id="tbody-mensual"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SEMANAL -->
+      <div class="pane" id="pane-semanal">
+        <div class="chart-wrap"><canvas id="chart-semanal"></canvas></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th></tr></thead>
+            <tbody id="tbody-semanal"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ACTIVO -->
+      <div class="pane" id="pane-activo">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>Activo</th><th>Trades</th><th>P&L trades</th><th>Funding</th><th>Total</th><th>% total</th><th>WR</th></tr>
+            </thead>
+            <tbody id="tbody-activo"><tr><td colspan="7" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CALENDARIO -->
+      <div class="pane" id="pane-calendario">
+        <div class="filters">
+          <select id="cal-month" onchange="renderCalendario()"></select>
+          <select id="cal-year" onchange="renderCalendario()"></select>
+        </div>
+        <div id="heatmap" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:520px;"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text3);" id="cal-legend">Verde = positivo · Rojo = negativo · Intensidad = tamaño del P&L</div>
+      </div>
+
+      <!-- CONFIG -->
+      <div class="pane" id="pane-config">
+        <div class="config-card">
+          <h3>Servidor</h3>
+          <p>URL del backend en Render (o tu servidor).</p>
+          <div class="field"><label>URL</label><input type="url" id="srv-url" placeholder="https://tu-servidor.onrender.com"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-green" onclick="saveUrl()"><i class="ti ti-plug"></i> Conectar</button>
+            <button class="btn" onclick="testConn()"><i class="ti ti-wifi"></i> Probar</button>
+          </div>
+          <div id="test-res" style="margin-top:10px;font-size:12px;"></div>
+        </div>
+
+        <div class="config-card">
+          <h3>Capital & Movimientos — <span id="cap-account-label">Cuenta 1</span></h3>
+          <p>Se guardan en el servidor (SQLite). No se pierden al cambiar de dispositivo.</p>
+          <div class="row">
+            <div class="field"><label>Tipo</label>
+              <select id="mov-tipo">
+                <option value="deposit">Depósito</option>
+                <option value="withdraw">Retiro</option>
+              </select>
+            </div>
+            <div class="field"><label>Importe (USDC)</label><input type="number" id="mov-amount" placeholder="0.00" min="0" step="0.01"></div>
+            <div class="field"><label>Fecha</label><input type="date" id="mov-date"></div>
+            <div><button class="btn btn-green" onclick="addMovimiento()"><i class="ti ti-plus"></i> Añadir</button></div>
+          </div>
+          <div class="tbl-wrap" style="margin-top:12px;">
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Importe</th><th>Acumulado</th><th></th></tr></thead>
+              <tbody id="tbody-movimientos"><tr><td colspan="5" class="empty">Sin movimientos.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="summary-bar">
+            <span>Depositado: <strong id="cap-dep">—</strong></span>
+            <span>Retirado: <strong id="cap-ret">—</strong></span>
+            <span>Capital neto: <strong id="cap-net">—</strong></span>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3>Reserva de ganancias</h3>
+          <p>% a reservar de los días positivos (aparece en la tabla Diario).</p>
+          <div class="row">
+            <div class="field"><label>% a reservar</label><input type="number" id="reserva-pct" placeholder="25" min="0" max="100" step="0.5"></div>
+            <div><button class="btn btn-green" onclick="saveReserva()"><i class="ti ti-check"></i> Guardar</button></div>
+          </div>
+          <div id="reserva-status" style="font-size:12px;color:var(--green);margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-nav">
+  <button class="active" onclick="showPane('diario')"><i class="ti ti-calendar"></i>Diario</button>
+  <button onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i>Mensual</button>
+  <button onclick="showPane('activo')"><i class="ti ti-coin"></i>Activos</button>
+  <button onclick="showPane('config')"><i class="ti ti-settings"></i>Config</button>
+</nav>
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+var currentAccount = 1;
+var S = {}, T = [], FUND = [];
+var MOV = { account1: [], account2: [], reserva_pct: 25 };
+var equityChart = null, mensualChart = null, semanalChart = null;
+var iv = null;
+
+// ═══════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('lt-theme', t);
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  const map = { dark: 0, light: 1, green: 2 };
+  const btns = document.querySelectorAll('.tbtn');
+  if (btns[map[t]]) btns[map[t]].classList.add('active');
+}
+(function() {
+  const t = localStorage.getItem('lt-theme') || 'dark';
+  setTheme(t);
+})();
+
+// ═══════════════════════════════════════
+// SERVER
+// ═══════════════════════════════════════
+function getUrl() { return (localStorage.getItem('lt-url') || '').replace(/\/$/, ''); }
+
+function saveUrl() {
+  const u = document.getElementById('srv-url').value.trim().replace(/\/$/, '');
+  localStorage.setItem('lt-url', u);
+  document.getElementById('srv-url').value = u;
+  fetchAll();
+}
+
+async function testConn() {
+  const u = getUrl() || document.getElementById('srv-url').value.trim().replace(/\/$/, '');
+  const el = document.getElementById('test-res');
+  el.textContent = 'Probando...';
+  try {
+    const r = await fetch(u + '/status', { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    el.innerHTML = '<span class="pos">✓ Conectado v' + (d.version || '?') +
+      ' · A1: ' + (d.account1_ready ? 'listo' : 'cargando') +
+      ' · Trades: ' + (d.progress?.account1?.trades || 0) + '</span>';
+  } catch (e) {
+    el.innerHTML = '<span class="neg">✗ Error: ' + e.message + '</span>';
+  }
+}
+
+function switchAccount(n) {
+  currentAccount = n;
+  document.querySelectorAll('.acct-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('acct' + n).classList.add('active');
+  document.getElementById('cap-account-label').textContent =
+    n === 1 ? 'Cuenta 1' : n === 2 ? 'Cuenta 2' : 'Hyperliquid';
+  clearStats();
+  fetchAll();
+}
+
+function clearStats() {
+  ['s-pnl','s-today','s-p7','s-fund','s-fee','s-total','s-rent','s-wr'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '—'; el.className = 'stat-val neu'; }
+  });
+}
+
+// ═══════════════════════════════════════
+// FETCH
+// ═══════════════════════════════════════
+async function fetchAll() {
+  const base = getUrl();
+  if (!base) {
+    document.getElementById('conn-badge').textContent = 'Sin servidor';
+    document.getElementById('conn-badge').className = 'badge warn';
+    return;
+  }
+  document.getElementById('loading-bar').classList.add('on');
+  document.getElementById('loading-fill').style.width = '30%';
+
+  let sfx = '';
+  let sumPath = '/summary', tradesPath = '/trades', fundPath = '/funding';
+  if (currentAccount === 2) {
+    sumPath = '/summary2'; tradesPath = '/trades2'; fundPath = '/funding2';
+  } else if (currentAccount === 3) {
+    sumPath = '/hl/summary'; tradesPath = '/hl/trades'; fundPath = '/hl/funding';
+  }
+
+  try {
+    const [rs, rt, rf, rm] = await Promise.all([
+      fetch(base + sumPath),
+      fetch(base + tradesPath + '?limit=50000'),
+      fetch(base + fundPath),
+      fetch(base + '/movimientos')
+    ]);
+    S = await rs.json();
+    const td = await rt.json();
+    T = td.trades || [];
+    const fd = await rf.json();
+    FUND = fd.funding || [];
+    MOV = await rm.json();
+
+    document.getElementById('loading-fill').style.width = '100%';
+    setTimeout(() => document.getElementById('loading-bar').classList.remove('on'), 400);
+
+    document.getElementById('conn-badge').textContent = S.initial_load_done ? 'Conectado' : 'Cargando...';
+    document.getElementById('conn-badge').className = 'badge ' + (S.initial_load_done ? 'ok' : 'warn');
+    document.getElementById('side-status').textContent =
+      (S.closed_trades || 0) + ' trades · ' + (S.win_rate || 0) + '% WR';
+
+    renderStats();
+    renderActive();
+  } catch (e) {
+    document.getElementById('conn-badge').textContent = 'Error';
+    document.getElementById('conn-badge').className = 'badge err';
+    document.getElementById('loading-bar').classList.remove('on');
+    console.error(e);
+  }
+}
+
+function startIv() {
+  if (iv) clearInterval(iv);
+  iv = setInterval(fetchAll, 5 * 60 * 1000);
+}
+
+// ═══════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════
+function getCapital() {
+  const key = currentAccount === 2 ? 'account2' : 'account1';
+  const list = MOV[key] || [];
+  let net = 0;
+  list.forEach(m => {
+    if (m.tipo === 'deposit') net += Number(m.amount);
+    else net -= Number(m.amount);
+  });
+  return net;
+}
+
+function getReserva() { return Number(MOV.reserva_pct || 25); }
+
+function setPnl(id, val, sub) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const n = Number(val);
+  el.textContent = (n >= 0 ? '+' : '') + n.toFixed(2) + ' U';
+  el.className = 'stat-val ' + (n > 0 ? 'pos' : n < 0 ? 'neg' : 'neu');
+  if (sub) {
+    const s = document.getElementById(id + '-sub');
+    if (s) s.textContent = sub;
+  }
+}
+
+function renderStats() {
+  const cap = getCapital();
+  const totalPnl = S.total_pnl || 0;
+  const totalAccount = cap + totalPnl;
+  const rent = cap > 0 ? (totalPnl / cap * 100) : 0;
+
+  setPnl('s-pnl', totalPnl);
+  setPnl('s-today', S.today_pnl || 0);
+  setPnl('s-p7', S.p7 || 0);
+  setPnl('s-fund', S.funding_total || 0);
+  setPnl('s-fee', -(S.fee_total || 0));
+  setPnl('s-total', totalAccount, 'depósitos + P&L');
+  setPnl('s-rent', rent, 'sobre capital');
+  document.getElementById('s-wr').textContent = (S.win_rate || 0) + '%';
+  document.getElementById('s-wr').className = 'stat-val neu';
+  document.getElementById('s-wr-sub').textContent = (S.wins || 0) + 'W / ' + (S.losses || 0) + 'L';
+}
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function showPane(id) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.pane === id);
+  });
+  document.querySelectorAll('.mobile-nav button').forEach((b, i) => {
+    const map = ['diario','mensual','activo','config'];
+    b.classList.toggle('active', map[i] === id);
+  });
+  document.getElementById('sidebar').classList.remove('open');
+
+  if (id === 'diario') renderDiario();
+  if (id === 'mensual') renderMensual();
+  if (id === 'semanal') renderSemanal();
+  if (id === 'activo') renderActivo();
+  if (id === 'calendario') renderCalendario();
+  if (id === 'config') {
+    renderMovimientos();
+    document.getElementById('reserva-pct').value = getReserva();
+    document.getElementById('srv-url').value = getUrl();
+  }
+}
+
+function renderActive() {
+  const id = document.querySelector('.pane.active')?.id?.replace('pane-', '') || 'diario';
+  showPane(id);
+}
+
+// ═══════════════════════════════════════
+// PERIOD HELPERS
+// ═══════════════════════════════════════
+function getFundMap(keyFn) {
+  const m = {};
+  FUND.forEach(f => {
+    const k = keyFn(f.ts);
+    m[k] = (m[k] || 0) + f.payment;
+  });
+  return m;
+}
+
+function buildPeriodMap(closes, keyFn) {
+  const m = {};
+  closes.forEach(t => {
+    const k = keyFn(t.ts);
+    if (!m[k]) m[k] = { pnl: 0, count: 0, wins: 0 };
+    m[k].pnl += t.pnl;
+    m[k].count++;
+    if (t.pnl > 0) m[k].wins++;
+  });
+  return m;
+}
+
+function weekKey(tsMs) {
+  const d = new Date(tsMs);
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// ═══════════════════════════════════════
+// DIARIO + EQUITY
+// ═══════════════════════════════════════
+function renderDiario() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null && !isNaN(t.pnl));
+  if (!closes.length) {
+    document.getElementById('tbody-diario').innerHTML = '<tr><td colspan="8" class="empty">Sin datos.</td></tr>';
+    return;
+  }
+
+  const dayFund = getFundMap(ts => new Date(ts).toISOString().slice(0, 10));
+  const periodData = buildPeriodMap(closes, ts => new Date(ts).toISOString().slice(0, 10));
+  const daysFilter = Number(document.getElementById('filter-days')?.value || 30);
+  const now = Date.now();
+  let uniqueDays = Object.keys(periodData).filter(d => (periodData[d]?.count || 0) > 0);
+  if (daysFilter > 0) {
+    const cutoff = now - daysFilter * 86400000;
+    uniqueDays = uniqueDays.filter(d => new Date(d).getTime() >= cutoff);
+  }
+  uniqueDays.sort((a, b) => b.localeCompare(a));
+
+  const cap = getCapital();
+  const sortedAsc = [...uniqueDays].sort((a, b) => a.localeCompare(b));
+  let runPnl = 0;
+  const balMap = {};
+  const equityLabels = [];
+  const equityData = [];
+  sortedAsc.forEach(d => {
+    balMap[d] = cap + runPnl;
+    runPnl += (periodData[d]?.pnl || 0) + (dayFund[d] || 0);
+    equityLabels.push(d.slice(5));
+    equityData.push(+(cap + runPnl).toFixed(2));
+  });
+
+  // Equity chart
+  if (equityChart) equityChart.destroy();
+  const ctx = document.getElementById('chart-equity');
+  if (ctx) {
+    equityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: equityLabels,
+        datasets: [{
+          label: 'Equity',
+          data: equityData,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            ticks: { color: '#71717a', font: { size: 11 } },
+            grid: { color: 'rgba(128,128,128,.08)' }
+          },
+          x: {
+            ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 10 },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  let cum = closes.reduce((a, t) => a + t.pnl, 0) + Object.values(dayFund).reduce((a, v) => a + v, 0);
+  document.getElementById('tbody-diario').innerHTML = uniqueDays.map(day => {
+    const d = periodData[day] || { pnl: 0, count: 0, wins: 0 };
+    const fund = dayFund[day] || 0;
+    const total = d.pnl + fund;
+    const pc = d.pnl > 0 ? 'pos' : d.pnl < 0 ? 'neg' : 'neu';
+    const wr = d.count ? Math.round(d.wins / d.count * 100) : 0;
+    const bal = balMap[day] || cap || 1;
+    const dayPct = bal > 0 ? (total / bal * 100) : 0;
+    const cumVal = cum; cum -= total;
+    const reserva = d.pnl > 0 ? d.pnl * getReserva() / 100 : null;
+    const reservaStr = reserva !== null
+      ? '<span class="pos">+' + reserva.toFixed(2) + '</span>'
+      : '<span class="neu">—</span>';
+    return '<tr>'
+      + '<td style="font-weight:500;white-space:nowrap;">' + day + '</td>'
+      + '<td>' + d.count + '</td>'
+      + '<td><span class="' + pc + '">' + (d.pnl >= 0 ? '+' : '') + d.pnl.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (dayPct >= 0 ? 'pos' : 'neg') + '">' + (dayPct >= 0 ? '+' : '') + dayPct.toFixed(2) + '%</span></td>'
+      + '<td>' + wr + '%</td>'
+      + '<td>' + reservaStr + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// MENSUAL / SEMANAL
+// ═══════════════════════════════════════
+function renderMensual() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null);
+  const fundMap = getFundMap(ts => new Date(ts).toISOString().slice(0, 7));
+  const periodData = buildPeriodMap(closes, ts => new Date(ts).toISOString().slice(0, 7));
+  const keys = Object.keys(periodData).sort().reverse();
+  if (!keys.length) {
+    document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="6" class="empty">Sin datos</td></tr>';
+    return;
+  }
+  document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
+    const d = periodData[k];
+    const fund = fundMap[k] || 0;
+    const total = d.pnl + fund;
+    const wr = d.count ? Math.round(d.wins / d.count * 100) : 0;
+    return '<tr><td>' + k + '</td><td>' + d.count + '</td>'
+      + '<td><span class="' + (d.pnl >= 0 ? 'pos' : 'neg') + '">' + (d.pnl >= 0 ? '+' : '') + d.pnl.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
+      + '<td>' + wr + '%</td></tr>';
+  }).join('');
+
+  // Chart
+  const asc = [...keys].reverse();
+  if (mensualChart) mensualChart.destroy();
+  mensualChart = new Chart(document.getElementById('chart-mensual'), {
+    type: 'bar',
+    data: {
+      labels: asc,
+      datasets: [
+        { label: 'P&L', data: asc.map(k => periodData[k].pnl), backgroundColor: asc.map(k => periodData[k].pnl >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)'), borderRadius: 4 },
+        { label: 'Funding', data: asc.map(k => fundMap[k] || 0), backgroundColor: 'rgba(59,130,246,.5)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#a1a1aa', font: { size: 11 } } } },
+      scales: {
+        y: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,.08)' } },
+        x: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderSemanal() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null);
+  const fundMap = getFundMap(ts => weekKey(ts));
+  const periodData = buildPeriodMap(closes, ts => weekKey(ts));
+  const keys = Object.keys(periodData).sort().reverse().slice(0, 20);
+  if (!keys.length) {
+    document.getElementById('tbody-semanal').innerHTML = '<tr><td colspan="6" class="empty">Sin datos</td></tr>';
+    return;
+  }
+  document.getElementById('tbody-semanal').innerHTML = keys.map(k => {
+    const d = periodData[k];
+    const fund = fundMap[k] || 0;
+    const total = d.pnl + fund;
+    const wr = d.count ? Math.round(d.wins / d.count * 100) : 0;
+    return '<tr><td>' + k + '</td><td>' + d.count + '</td>'
+      + '<td><span class="' + (d.pnl >= 0 ? 'pos' : 'neg') + '">' + (d.pnl >= 0 ? '+' : '') + d.pnl.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
+      + '<td>' + wr + '%</td></tr>';
+  }).join('');
+
+  const asc = [...keys].reverse();
+  if (semanalChart) semanalChart.destroy();
+  semanalChart = new Chart(document.getElementById('chart-semanal'), {
+    type: 'bar',
+    data: {
+      labels: asc.map(k => k.slice(5)),
+      datasets: [
+        { label: 'P&L', data: asc.map(k => periodData[k].pnl), backgroundColor: asc.map(k => periodData[k].pnl >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)'), borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { color: '#71717a', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,.08)' } },
+        x: { ticks: { color: '#71717a', font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// ACTIVO
+// ═══════════════════════════════════════
+function renderActivo() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null);
+  const symMap = {};
+  closes.forEach(t => {
+    const s = t.symbol || '?';
+    if (!symMap[s]) symMap[s] = { symbol: s, pnl: 0, count: 0, wins: 0, funding: 0 };
+    symMap[s].pnl += t.pnl;
+    symMap[s].count++;
+    if (t.pnl > 0) symMap[s].wins++;
+  });
+  FUND.forEach(f => {
+    const s = f.symbol || '?';
+    if (!symMap[s]) symMap[s] = { symbol: s, pnl: 0, count: 0, wins: 0, funding: 0 };
+    symMap[s].funding = (symMap[s].funding || 0) + f.payment;
+  });
+  const sorted = Object.values(symMap)
+    .map(x => ({ ...x, total: x.pnl + (x.funding || 0) }))
+    .sort((a, b) => b.total - a.total);
+  const totalAll = sorted.reduce((a, x) => a + x.total, 0);
+  if (!sorted.length) {
+    document.getElementById('tbody-activo').innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+    return;
+  }
+  document.getElementById('tbody-activo').innerHTML = sorted.map(x => {
+    const wr = x.count ? Math.round(x.wins / x.count * 100) : 0;
+    const pct = totalAll ? (x.total / Math.abs(totalAll) * 100) : 0;
+    return '<tr><td><strong>' + x.symbol + '</strong></td><td>' + x.count + '</td>'
+      + '<td><span class="' + (x.pnl >= 0 ? 'pos' : 'neg') + '">' + (x.pnl >= 0 ? '+' : '') + x.pnl.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (x.funding >= 0 ? 'pos' : 'neg') + '">' + (x.funding >= 0 ? '+' : '') + x.funding.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (x.total >= 0 ? 'pos' : 'neg') + '">' + (x.total >= 0 ? '+' : '') + x.total.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (pct >= 0 ? 'pos' : 'neg') + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%</span></td>'
+      + '<td>' + wr + '%</td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// CALENDARIO HEATMAP
+// ═══════════════════════════════════════
+function renderCalendario() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null);
+  const dayMap = buildPeriodMap(closes, ts => new Date(ts).toISOString().slice(0, 10));
+  const fundMap = getFundMap(ts => new Date(ts).toISOString().slice(0, 10));
+
+  // Fill month/year selects once
+  const yearSel = document.getElementById('cal-year');
+  const monthSel = document.getElementById('cal-month');
+  if (!yearSel.options.length) {
+    const years = new Set();
+    Object.keys(dayMap).forEach(d => years.add(d.slice(0, 4)));
+    const nowY = new Date().getFullYear();
+    years.add(String(nowY));
+    [...years].sort().reverse().forEach(y => {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      yearSel.appendChild(o);
+    });
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option');
+      o.value = m;
+      o.textContent = new Date(2024, m - 1).toLocaleString('es', { month: 'long' });
+      monthSel.appendChild(o);
+    }
+    yearSel.value = nowY;
+    monthSel.value = new Date().getMonth() + 1;
+  }
+
+  const year = Number(yearSel.value);
+  const month = Number(monthSel.value);
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const last = new Date(Date.UTC(year, month, 0));
+  const startPad = (first.getUTCDay() + 6) % 7; // Mon=0
+
+  const maxAbs = Math.max(...Object.keys(dayMap)
+    .filter(d => d.startsWith(year + '-' + String(month).padStart(2, '0')))
+    .map(d => Math.abs((dayMap[d]?.pnl || 0) + (fundMap[d] || 0))), 1);
+
+  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  let html = days.map(d => '<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px;">' + d + '</div>').join('');
+
+  for (let i = 0; i < startPad; i++) html += '<div></div>';
+
+  for (let day = 1; day <= last.getUTCDate(); day++) {
+    const key = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const pnl = (dayMap[key]?.pnl || 0) + (fundMap[key] || 0);
+    const intensity = Math.min(Math.abs(pnl) / maxAbs, 1);
+    let bg = 'var(--bg3)';
+    if (pnl > 0) bg = `rgba(34,197,94,${0.15 + intensity * 0.7})`;
+    if (pnl < 0) bg = `rgba(239,68,68,${0.15 + intensity * 0.7})`;
+    const title = key + ': ' + (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + ' U';
+    html += '<div title="' + title + '" style="aspect-ratio:1;border-radius:6px;background:' + bg +
+      ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;cursor:default;">' +
+      day + '</div>';
+  }
+  document.getElementById('heatmap').innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// MOVIMIENTOS
+// ═══════════════════════════════════════
+function renderMovimientos() {
+  const key = currentAccount === 2 ? 'account2' : 'account1';
+  const list = (MOV[key] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  let acc = 0, dep = 0, ret = 0;
+  if (!list.length) {
+    document.getElementById('tbody-movimientos').innerHTML = '<tr><td colspan="5" class="empty">Sin movimientos.</td></tr>';
+  } else {
+    document.getElementById('tbody-movimientos').innerHTML = list.map((m, i) => {
+      if (m.tipo === 'deposit') { acc += Number(m.amount); dep += Number(m.amount); }
+      else { acc -= Number(m.amount); ret += Number(m.amount); }
+      return '<tr><td>' + m.date + '</td><td>' + (m.tipo === 'deposit' ? 'Depósito' : 'Retiro') + '</td>'
+        + '<td class="' + (m.tipo === 'deposit' ? 'pos' : 'neg') + '">' + (m.tipo === 'deposit' ? '+' : '-') + Number(m.amount).toFixed(2) + '</td>'
+        + '<td>' + acc.toFixed(2) + '</td>'
+        + '<td><button class="btn" style="padding:3px 8px;" onclick="delMovimiento(' + i + ')"><i class="ti ti-trash"></i></button></td></tr>';
+    }).join('');
+  }
+  document.getElementById('cap-dep').textContent = dep.toFixed(2) + ' U';
+  document.getElementById('cap-ret').textContent = ret.toFixed(2) + ' U';
+  document.getElementById('cap-net').textContent = (dep - ret).toFixed(2) + ' U';
+}
+
+async function addMovimiento() {
+  const tipo = document.getElementById('mov-tipo').value;
+  const amount = Number(document.getElementById('mov-amount').value);
+  const date = document.getElementById('mov-date').value;
+  if (!amount || !date) return alert('Completa importe y fecha');
+  const key = currentAccount === 2 ? 'account2' : 'account1';
+  if (!MOV[key]) MOV[key] = [];
+  MOV[key].push({ tipo, amount, date });
+  await saveMovimientos();
+  document.getElementById('mov-amount').value = '';
+  renderMovimientos();
+  renderStats();
+}
+
+async function delMovimiento(idx) {
+  const key = currentAccount === 2 ? 'account2' : 'account1';
+  const list = (MOV[key] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  list.splice(idx, 1);
+  MOV[key] = list;
+  await saveMovimientos();
+  renderMovimientos();
+  renderStats();
+}
+
+async function saveMovimientos() {
+  const base = getUrl();
+  if (!base) return;
+  try {
+    await fetch(base + '/movimientos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(MOV)
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function saveReserva() {
+  MOV.reserva_pct = Number(document.getElementById('reserva-pct').value) || 25;
+  await saveMovimientos();
+  document.getElementById('reserva-status').textContent = '✓ Guardado (' + MOV.reserva_pct + '%)';
+  renderDiario();
+}
+
+// ═══════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════
+function exportCSV() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null);
+  if (!closes.length) return alert('No hay trades para exportar');
+  let csv = 'Date,Symbol,Side,PnL,Fee,Price,Size\n';
+  closes.forEach(t => {
+    const d = new Date(t.ts).toISOString().slice(0, 19).replace('T', ' ');
+    csv += [d, t.symbol, t.side, t.pnl, t.fee, t.price, t.size].join(',') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'trades_' + (currentAccount === 3 ? 'hl' : 'lighter' + currentAccount) + '.csv';
+  a.click();
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.getElementById('mov-date').value = new Date().toISOString().slice(0, 10);
+if (window.innerWidth <= 900) document.getElementById('menu-btn').style.display = 'inline-flex';
+if (getUrl()) {
+  document.getElementById('srv-url').value = getUrl();
+  fetchAll();
+  startIv();
+}
+</script>
+</body>
+</html>
