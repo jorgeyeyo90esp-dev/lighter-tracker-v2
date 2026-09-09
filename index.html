@@ -97,33 +97,19 @@ body {
 
 /* Layout */
 .app {
-  display: grid;
-  grid-template-columns: 220px 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 @media (max-width: 900px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-  .sidebar.open { display: flex; position: fixed; inset: 0; z-index: 200; }
   .mobile-nav { display: flex !important; }
+  .content { padding-bottom: 70px; }
 }
 
-/* Sidebar */
-.sidebar {
-  background: var(--bg2);
-  border-right: 1px solid var(--border2);
-  display: flex;
-  flex-direction: column;
-  padding: 20px 12px;
-  gap: 4px;
-}
 .logo {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px 20px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
 }
 .logo-dot {
   width: 10px; height: 10px;
@@ -133,43 +119,9 @@ body {
 }
 .logo h1 { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
 .logo .sub { font-size: 11px; color: var(--text3); }
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text2);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: all .15s;
-  width: 100%;
-  text-align: left;
-}
-.nav-item:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
-.nav-item.active {
-  background: var(--gbg);
-  color: var(--green);
-  border-color: var(--green);
-  font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--green);
-}
-.nav-item i { font-size: 18px; width: 22px; text-align: center; }
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 12px;
-  border-top: 1px solid var(--border);
-  font-size: 11px;
-  color: var(--text3);
-}
 
 /* Main */
-.main { display: flex; flex-direction: column; min-width: 0; }
+.main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .topbar {
   display: flex;
   align-items: center;
@@ -459,36 +411,16 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
 </head>
 <body>
 <div class="app">
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <div class="logo">
-      <div class="logo-dot"></div>
-      <div>
-        <h1>Lighter Tracker</h1>
-        <span class="sub">v2 · Lighter + HL</span>
-      </div>
-    </div>
-    <button class="nav-item active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
-    <button class="nav-item" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
-    <button class="nav-item" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
-    <button class="nav-item" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
-    <button class="nav-item" data-pane="calendario" onclick="showPane('calendario')"><i class="ti ti-grid-dots"></i> Calendario</button>
-    <button class="nav-item" data-pane="config" onclick="showPane('config')"><i class="ti ti-settings"></i> Config</button>
-    <div class="sidebar-footer">
-      <div id="side-status">—</div>
-      <div class="theme-btns" style="margin-top:10px;">
-        <div class="tbtn tbtn-dark active" onclick="setTheme('dark')" title="Oscuro"></div>
-        <div class="tbtn tbtn-light" onclick="setTheme('light')" title="Claro"></div>
-        <div class="tbtn tbtn-green" onclick="setTheme('green')" title="Verde"></div>
-        <div class="tbtn tbtn-blue" onclick="setTheme('blue')" title="Azul"></div>
-      </div>
-    </div>
-  </aside>
-
   <div class="main">
     <header class="topbar">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button class="btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none;" id="menu-btn"><i class="ti ti-menu-2"></i></button>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div class="logo">
+          <div class="logo-dot"></div>
+          <div>
+            <h1>Lighter Tracker</h1>
+            <span class="sub" id="side-status">v2 · Lighter + HL</span>
+          </div>
+        </div>
         <div class="acct-sw">
           <button class="acct-btn active" id="acct1" onclick="switchAccount(1)">Lighter 1</button>
           <button class="acct-btn" id="acct2" onclick="switchAccount(2)">Lighter 2</button>
@@ -497,6 +429,12 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         <span class="badge ok" id="conn-badge">—</span>
       </div>
       <div class="top-actions">
+        <div class="theme-btns">
+          <div class="tbtn tbtn-dark active" onclick="setTheme('dark')" title="Oscuro"></div>
+          <div class="tbtn tbtn-light" onclick="setTheme('light')" title="Claro"></div>
+          <div class="tbtn tbtn-green" onclick="setTheme('green')" title="Verde"></div>
+          <div class="tbtn tbtn-blue" onclick="setTheme('blue')" title="Azul"></div>
+        </div>
         <button class="btn" onclick="fetchAll()"><i class="ti ti-refresh"></i> Actualizar</button>
         <button class="btn" onclick="exportCSV()"><i class="ti ti-download"></i> CSV</button>
       </div>
@@ -523,7 +461,6 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         <button class="pane-tab" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
         <button class="pane-tab" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
         <button class="pane-tab" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
-        <button class="pane-tab" data-pane="calendario" onclick="showPane('calendario')"><i class="ti ti-grid-dots"></i> Calendario</button>
         <button class="pane-tab" data-pane="config" onclick="showPane('config')"><i class="ti ti-settings"></i> Config</button>
       </div>
 
@@ -580,16 +517,6 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
             <tbody id="tbody-activo"><tr><td colspan="7" class="empty">—</td></tr></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- CALENDARIO -->
-      <div class="pane" id="pane-calendario">
-        <div class="filters">
-          <select id="cal-month" onchange="renderCalendario()"></select>
-          <select id="cal-year" onchange="renderCalendario()"></select>
-        </div>
-        <div id="heatmap" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:520px;"></div>
-        <div style="margin-top:12px;font-size:12px;color:var(--text3);" id="cal-legend">Verde = positivo · Rojo = negativo · Intensidad = tamaño del P&L</div>
       </div>
 
       <!-- CONFIG -->
@@ -846,10 +773,8 @@ function renderStats() {
 // ═══════════════════════════════════════
 function showPane(id) {
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
-  document.getElementById('pane-' + id).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.pane === id);
-  });
+  const pane = document.getElementById('pane-' + id);
+  if (pane) pane.classList.add('active');
   document.querySelectorAll('.pane-tab').forEach(n => {
     n.classList.toggle('active', n.dataset.pane === id);
   });
@@ -857,13 +782,11 @@ function showPane(id) {
     const map = ['diario','semanal','activo','config'];
     b.classList.toggle('active', map[i] === id);
   });
-  document.getElementById('sidebar').classList.remove('open');
 
   if (id === 'diario') renderDiario();
   if (id === 'mensual') renderMensual();
   if (id === 'semanal') renderSemanal();
   if (id === 'activo') renderActivo();
-  if (id === 'calendario') renderCalendario();
   if (id === 'config') {
     renderMovimientos();
     document.getElementById('reserva-pct').value = getReserva();
@@ -1251,8 +1174,6 @@ function exportCSV() {
 // INIT
 // ═══════════════════════════════════════
 document.getElementById('mov-date').value = new Date().toISOString().slice(0, 10);
-if (window.innerWidth <= 900) document.getElementById('menu-btn').style.display = 'inline-flex';
-
 // Cargar respaldo local al arrancar (por si el servidor aún no responde)
 const localBoot = loadLocalMov();
 if (localBoot) MOV = localBoot;
