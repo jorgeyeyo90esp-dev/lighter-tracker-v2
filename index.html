@@ -445,8 +445,8 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
       </div>
     </div>
     <button class="nav-item active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
-    <button class="nav-item" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
     <button class="nav-item" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
+    <button class="nav-item" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
     <button class="nav-item" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
     <button class="nav-item" data-pane="calendario" onclick="showPane('calendario')"><i class="ti ti-grid-dots"></i> Calendario</button>
     <button class="nav-item" data-pane="config" onclick="showPane('config')"><i class="ti ti-settings"></i> Config</button>
@@ -522,8 +522,8 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         <div class="chart-wrap"><canvas id="chart-mensual"></canvas></div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th></tr></thead>
-            <tbody id="tbody-mensual"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
+            <tbody id="tbody-mensual"><tr><td colspan="7" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -533,8 +533,8 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
         <div class="chart-wrap"><canvas id="chart-semanal"></canvas></div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th></tr></thead>
-            <tbody id="tbody-semanal"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+            <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
+            <tbody id="tbody-semanal"><tr><td colspan="7" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -980,7 +980,7 @@ function renderMensual() {
   const periodData = buildPeriodMap(closes, ts => new Date(ts).toISOString().slice(0, 7));
   const keys = Object.keys(periodData).sort().reverse();
   if (!keys.length) {
-    document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="6" class="empty">Sin datos</td></tr>';
+    document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
     return;
   }
   document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
@@ -988,11 +988,16 @@ function renderMensual() {
     const fund = fundMap[k] || 0;
     const total = d.pnl + fund;
     const wr = d.count ? Math.round(d.wins / d.count * 100) : 0;
+    const reserva = d.pnl > 0 ? d.pnl * getReserva() / 100 : null;
+    const reservaStr = reserva !== null
+      ? '<span class="pos">+' + reserva.toFixed(2) + '</span>'
+      : '<span class="neu">—</span>';
     return '<tr><td>' + k + '</td><td>' + d.count + '</td>'
       + '<td><span class="' + (d.pnl >= 0 ? 'pos' : 'neg') + '">' + (d.pnl >= 0 ? '+' : '') + d.pnl.toFixed(2) + '</span></td>'
       + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
       + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
-      + '<td>' + wr + '%</td></tr>';
+      + '<td>' + wr + '%</td>'
+      + '<td>' + reservaStr + '</td></tr>';
   }).join('');
 
   // Chart
@@ -1024,7 +1029,7 @@ function renderSemanal() {
   const periodData = buildPeriodMap(closes, ts => weekKey(ts));
   const keys = Object.keys(periodData).sort().reverse().slice(0, 20);
   if (!keys.length) {
-    document.getElementById('tbody-semanal').innerHTML = '<tr><td colspan="6" class="empty">Sin datos</td></tr>';
+    document.getElementById('tbody-semanal').innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
     return;
   }
   document.getElementById('tbody-semanal').innerHTML = keys.map(k => {
@@ -1032,11 +1037,16 @@ function renderSemanal() {
     const fund = fundMap[k] || 0;
     const total = d.pnl + fund;
     const wr = d.count ? Math.round(d.wins / d.count * 100) : 0;
+    const reserva = d.pnl > 0 ? d.pnl * getReserva() / 100 : null;
+    const reservaStr = reserva !== null
+      ? '<span class="pos">+' + reserva.toFixed(2) + '</span>'
+      : '<span class="neu">—</span>';
     return '<tr><td>' + k + '</td><td>' + d.count + '</td>'
       + '<td><span class="' + (d.pnl >= 0 ? 'pos' : 'neg') + '">' + (d.pnl >= 0 ? '+' : '') + d.pnl.toFixed(2) + '</span></td>'
       + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
       + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
-      + '<td>' + wr + '%</td></tr>';
+      + '<td>' + wr + '%</td>'
+      + '<td>' + reservaStr + '</td></tr>';
   }).join('');
 
   const asc = [...keys].reverse();
