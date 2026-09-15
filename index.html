@@ -458,6 +458,7 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
       <!-- Pestañas (donde estaba el gráfico) -->
       <div class="pane-tabs" id="pane-tabs">
         <button class="pane-tab active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
+        <button class="pane-tab" data-pane="diario-activo" onclick="showPane('diario-activo')"><i class="ti ti-calendar-stats"></i> Diario × Activo</button>
         <button class="pane-tab" data-pane="semanal" onclick="showPane('semanal')"><i class="ti ti-calendar-week"></i> Semanal</button>
         <button class="pane-tab" data-pane="mensual" onclick="showPane('mensual')"><i class="ti ti-calendar-month"></i> Mensual</button>
         <button class="pane-tab" data-pane="activo" onclick="showPane('activo')"><i class="ti ti-coin"></i> Por Activo</button>
@@ -483,6 +484,32 @@ tr:nth-child(even) td { background: rgba(128,128,128,.03); }
               </tr>
             </thead>
             <tbody id="tbody-diario"><tr><td colspan="8" class="empty">Conecta el servidor en Config</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DIARIO × ACTIVO -->
+      <div class="pane" id="pane-diario-activo">
+        <div class="filters">
+          <select id="filter-days-da" onchange="renderDiarioActivo()">
+            <option value="0">Todo el historial</option>
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+          <select id="filter-sym-da" onchange="renderDiarioActivo()">
+            <option value="">Todos los activos</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Activo</th><th>Trades</th><th>P&L trades</th>
+                <th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-diario-activo"><tr><td colspan="8" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -784,6 +811,7 @@ function showPane(id) {
   });
 
   if (id === 'diario') renderDiario();
+  if (id === 'diario-activo') renderDiarioActivo();
   if (id === 'mensual') renderMensual();
   if (id === 'semanal') renderSemanal();
   if (id === 'activo') renderActivo();
@@ -979,6 +1007,78 @@ function renderActivo() {
       + '<td><span class="' + (x.total >= 0 ? 'pos' : 'neg') + '">' + (x.total >= 0 ? '+' : '') + x.total.toFixed(2) + '</span></td>'
       + '<td><span class="' + (pct >= 0 ? 'pos' : 'neg') + '">' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%</span></td>'
       + '<td>' + wr + '%</td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// DIARIO × ACTIVO
+// ═══════════════════════════════════════
+function renderDiarioActivo() {
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null && !isNaN(t.pnl));
+  const daysFilter = Number(document.getElementById('filter-days-da')?.value || 30);
+  const symFilter = document.getElementById('filter-sym-da')?.value || '';
+  const now = Date.now();
+  const cutoff = daysFilter > 0 ? now - daysFilter * 86400000 : 0;
+
+  // Map day+symbol from trades
+  const map = {};
+  closes.forEach(t => {
+    const day = new Date(t.ts).toISOString().slice(0, 10);
+    if (cutoff && new Date(day).getTime() < cutoff) return;
+    const sym = t.symbol || '?';
+    const key = day + '|' + sym;
+    if (!map[key]) map[key] = { day, symbol: sym, pnl: 0, count: 0, wins: 0, funding: 0 };
+    map[key].pnl += t.pnl;
+    map[key].count++;
+    if (t.pnl > 0) map[key].wins++;
+  });
+
+  // Funding by day+symbol
+  FUND.forEach(f => {
+    const day = new Date(f.ts).toISOString().slice(0, 10);
+    if (cutoff && new Date(day).getTime() < cutoff) return;
+    const sym = f.symbol || '?';
+    const key = day + '|' + sym;
+    if (!map[key]) map[key] = { day, symbol: sym, pnl: 0, count: 0, wins: 0, funding: 0 };
+    map[key].funding += f.payment || 0;
+  });
+
+  // Fill symbol filter options
+  const symSel = document.getElementById('filter-sym-da');
+  if (symSel) {
+    const prev = symSel.value;
+    const syms = [...new Set(Object.values(map).map(x => x.symbol))].sort();
+    symSel.innerHTML = '<option value="">Todos los activos</option>' +
+      syms.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+    if (prev && syms.includes(prev)) symSel.value = prev;
+  }
+
+  let rows = Object.values(map);
+  if (symFilter) rows = rows.filter(r => r.symbol === symFilter);
+  rows.sort((a, b) => b.day.localeCompare(a.day) || a.symbol.localeCompare(b.symbol));
+
+  if (!rows.length) {
+    document.getElementById('tbody-diario-activo').innerHTML =
+      '<tr><td colspan="8" class="empty">Sin datos</td></tr>';
+    return;
+  }
+
+  document.getElementById('tbody-diario-activo').innerHTML = rows.map(r => {
+    const total = r.pnl + r.funding;
+    const wr = r.count ? Math.round(r.wins / r.count * 100) : 0;
+    const reserva = r.pnl > 0 ? r.pnl * getReserva() / 100 : null;
+    const reservaStr = reserva !== null
+      ? '<span class="pos">+' + reserva.toFixed(2) + '</span>'
+      : '<span class="neu">—</span>';
+    return '<tr>'
+      + '<td style="font-weight:500;white-space:nowrap;">' + r.day + '</td>'
+      + '<td><strong>' + r.symbol + '</strong></td>'
+      + '<td>' + r.count + '</td>'
+      + '<td><span class="' + (r.pnl >= 0 ? 'pos' : 'neg') + '">' + (r.pnl >= 0 ? '+' : '') + r.pnl.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (r.funding >= 0 ? 'pos' : 'neg') + '">' + (r.funding >= 0 ? '+' : '') + r.funding.toFixed(2) + '</span></td>'
+      + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
+      + '<td>' + wr + '%</td>'
+      + '<td>' + reservaStr + '</td></tr>';
   }).join('');
 }
 
