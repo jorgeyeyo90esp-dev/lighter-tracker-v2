@@ -1050,19 +1050,19 @@ function renderDiarioActivo() {
     return;
   }
 
-  // Header: FECHA | assets... | TOTAL
+  // Header: FECHA | assets... | TOTAL (activos y valores centrados)
   document.getElementById('thead-diario-activo').innerHTML =
-    '<tr><th style="position:sticky;left:0;z-index:2;background:var(--bg3);">FECHA</th>' +
-    syms.map(s => '<th>' + s + '</th>').join('') +
-    '<th style="position:sticky;right:0;z-index:2;background:var(--bg3);">TOTAL</th></tr>';
+    '<tr><th style="position:sticky;left:0;z-index:2;background:var(--bg3);text-align:left;">FECHA</th>' +
+    syms.map(s => '<th style="text-align:center;">' + s + '</th>').join('') +
+    '<th style="position:sticky;right:0;z-index:2;background:var(--bg3);text-align:center;">TOTAL</th></tr>';
 
   function fmtCell(v) {
     if (v === undefined || v === null || Math.abs(v) < 0.005) {
-      return '<td class="neu" style="text-align:right;">—</td>';
+      return '<td class="neu" style="text-align:center;">—</td>';
     }
     const cls = v > 0 ? 'pos' : 'neg';
     const sign = v > 0 ? '+' : '';
-    return '<td style="text-align:right;"><span class="' + cls + '">' + sign + v.toFixed(2) + '</span></td>';
+    return '<td style="text-align:center;"><span class="' + cls + '">' + sign + v.toFixed(2) + '</span></td>';
   }
 
   document.getElementById('tbody-diario-activo').innerHTML = days.map(day => {
@@ -1075,9 +1075,9 @@ function renderDiarioActivo() {
     const totalCls = total > 0 ? 'pos' : total < 0 ? 'neg' : 'neu';
     const totalSign = total > 0 ? '+' : '';
     return '<tr>'
-      + '<td style="font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--card);z-index:1;">' + day + '</td>'
+      + '<td style="font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--card);z-index:1;text-align:left;">' + day + '</td>'
       + cells
-      + '<td style="text-align:right;font-weight:700;position:sticky;right:0;background:var(--card);z-index:1;">'
+      + '<td style="text-align:center;font-weight:700;position:sticky;right:0;background:var(--card);z-index:1;">'
       + '<span class="' + totalCls + '">' + totalSign + total.toFixed(2) + '</span></td>'
       + '</tr>';
   }).join('');
