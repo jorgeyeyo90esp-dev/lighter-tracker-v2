@@ -924,7 +924,14 @@ function renderStats() {
   setPnl('s-fund', S.funding_total || 0);
   setPnl('s-fee', -(S.fee_total || 0));
   setPnl('s-total', totalAccount, 'depósitos + P&L');
-  setPnl('s-rent', rent, 'sobre capital');
+  // Rentabilidad en % (no en U)
+  const rentEl = document.getElementById('s-rent');
+  if (rentEl) {
+    rentEl.textContent = (rent >= 0 ? '+' : '') + rent.toFixed(2) + '%';
+    rentEl.className = 'stat-val ' + (rent > 0 ? 'pos' : rent < 0 ? 'neg' : 'neu');
+  }
+  const rentSub = document.getElementById('s-rent-sub');
+  if (rentSub) rentSub.textContent = 'sobre capital';
   document.getElementById('s-wr').textContent = (S.win_rate || 0) + '%';
   document.getElementById('s-wr').className = 'stat-val neu';
   document.getElementById('s-wr-sub').textContent = (S.wins || 0) + 'W / ' + (S.losses || 0) + 'L';
