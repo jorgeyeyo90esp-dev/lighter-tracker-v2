@@ -344,6 +344,41 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 .pane { display: none; }
 .pane.active { display: block; }
 
+.goal-bar-wrap {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--card);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+}
+.goal-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.goal-bar-track {
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.goal-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--green), #2dd4bf);
+  box-shadow: 0 0 12px rgba(52,211,153,.35);
+  transition: width .35s ease;
+}
+.goal-bar-fill.over { background: linear-gradient(90deg, #22d3ee, var(--green)); }
+.goal-bar-fill.neg { background: linear-gradient(90deg, var(--red), #fb7185); }
+
 /* Config */
 .config-card {
   background: var(--card);
@@ -494,6 +529,15 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
         <div class="stat"><div class="stat-label">Winrate</div><div class="stat-val neu" id="s-wr">—</div><div class="stat-sub" id="s-wr-sub">—</div></div>
       </div>
 
+      <!-- Objetivo mensual -->
+      <div id="goal-bar-wrap" class="goal-bar-wrap" style="display:none;">
+        <div class="goal-bar-head">
+          <span>Objetivo mensual <span id="goal-month-label"></span></span>
+          <span id="goal-bar-text">—</span>
+        </div>
+        <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar-fill"></div></div>
+      </div>
+
       <!-- Pestañas (donde estaba el gráfico) -->
       <div class="pane-tabs" id="pane-tabs">
         <button class="pane-tab active" data-pane="diario" onclick="showPane('diario')"><i class="ti ti-calendar"></i> Diario</button>
@@ -594,7 +638,7 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 
         <div class="config-card">
           <h3>Capital & Movimientos — <span id="cap-account-label">Cuenta 1</span></h3>
-          <p>Se guardan en el servidor (SQLite). No se pierden al cambiar de dispositivo.</p>
+          <p>Triple respaldo: servidor (SQLite) + archivo JSON en el servidor + navegador (localStorage).</p>
           <div class="row">
             <div class="field"><label>Tipo</label>
               <select id="mov-tipo">
@@ -617,6 +661,29 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
             <span>Retirado: <strong id="cap-ret">—</strong></span>
             <span>Capital neto: <strong id="cap-net">—</strong></span>
           </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+            <button class="btn" onclick="exportMovimientos()"><i class="ti ti-download"></i> Exportar backup</button>
+            <button class="btn" onclick="document.getElementById('import-mov-file').click()"><i class="ti ti-upload"></i> Importar backup</button>
+            <input type="file" id="import-mov-file" accept="application/json,.json" style="display:none" onchange="importMovimientos(event)">
+          </div>
+          <div id="mov-backup-status" style="font-size:12px;color:var(--text3);margin-top:8px;"></div>
+        </div>
+
+        <div class="config-card">
+          <h3>Objetivo mensual</h3>
+          <p>Meta de P&L del mes en curso (trades + funding). Se muestra arriba con barra de progreso.</p>
+          <div class="row">
+            <div class="field" style="flex:0 0 auto;min-width:80px;">
+              <label>Activo</label>
+              <select id="goal-enabled">
+                <option value="0">No</option>
+                <option value="1">Sí</option>
+              </select>
+            </div>
+            <div class="field"><label>Meta (USDC)</label><input type="number" id="goal-mensual" placeholder="1000" min="0" step="1"></div>
+            <div><button class="btn btn-green" onclick="saveGoal()"><i class="ti ti-check"></i> Guardar</button></div>
+          </div>
+          <div id="goal-status" style="font-size:12px;color:var(--green);margin-top:6px;"></div>
         </div>
 
         <div class="config-card">
@@ -646,7 +713,7 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 // ═══════════════════════════════════════
 var currentAccount = 1;
 var S = {}, T = [], FUND = [];
-var MOV = { account1: [], account2: [], reserva_pct: 25 };
+var MOV = { account1: [], account2: [], reserva_pct: 25, goal_mensual: 0, goal_enabled: false };
 // charts removed
 var iv = null;
 
@@ -810,6 +877,41 @@ function setPnl(id, val, sub) {
   }
 }
 
+function monthPnlNow() {
+  const ym = new Date().toISOString().slice(0, 7);
+  const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null && !isNaN(t.pnl));
+  let pnl = 0;
+  closes.forEach(t => {
+    if (new Date(toMs(t.ts)).toISOString().slice(0, 7) === ym) pnl += t.pnl;
+  });
+  (FUND || []).forEach(f => {
+    if (new Date(toMs(f.ts ?? f.timestamp)).toISOString().slice(0, 7) === ym) pnl += fundPayment(f);
+  });
+  return pnl;
+}
+
+function renderGoalBar() {
+  const wrap = document.getElementById('goal-bar-wrap');
+  if (!wrap) return;
+  const enabled = MOV.goal_enabled === true || MOV.goal_enabled === 1 || MOV.goal_enabled === '1';
+  const goal = Number(MOV.goal_mensual || 0);
+  if (!enabled || goal <= 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  const ym = new Date().toISOString().slice(0, 7);
+  document.getElementById('goal-month-label').textContent = '(' + ym + ')';
+  const cur = monthPnlNow();
+  const pct = Math.max(0, Math.min(100, (cur / goal) * 100));
+  const fill = document.getElementById('goal-bar-fill');
+  fill.style.width = pct.toFixed(1) + '%';
+  fill.className = 'goal-bar-fill' + (cur < 0 ? ' neg' : (cur >= goal ? ' over' : ''));
+  const sign = cur >= 0 ? '+' : '';
+  document.getElementById('goal-bar-text').innerHTML =
+    '<span class="' + (cur >= 0 ? 'pos' : 'neg') + '">' + sign + cur.toFixed(2) + '</span> / ' + goal.toFixed(0) + ' U (' + pct.toFixed(0) + '%)';
+}
+
 function renderStats() {
   const cap = getCapital();
   const totalPnl = S.total_pnl || 0;
@@ -826,6 +928,7 @@ function renderStats() {
   document.getElementById('s-wr').textContent = (S.win_rate || 0) + '%';
   document.getElementById('s-wr').className = 'stat-val neu';
   document.getElementById('s-wr-sub').textContent = (S.wins || 0) + 'W / ' + (S.losses || 0) + 'L';
+  renderGoalBar();
 }
 
 // ═══════════════════════════════════════
@@ -852,6 +955,9 @@ function showPane(id) {
     renderMovimientos();
     document.getElementById('reserva-pct').value = getReserva();
     document.getElementById('srv-url').value = getUrl();
+    document.getElementById('goal-mensual').value = Number(MOV.goal_mensual || 0);
+    document.getElementById('goal-enabled').value =
+      (MOV.goal_enabled === true || MOV.goal_enabled === 1 || MOV.goal_enabled === '1') ? '1' : '0';
   }
 }
 
@@ -1236,25 +1342,28 @@ function saveLocalMov() {
 }
 
 function mergeMovimientos(server, local) {
-  // Si el servidor está vacío pero hay datos locales → usar locales y re-subir
   const serverEmpty = (!server.account1 || !server.account1.length) &&
                       (!server.account2 || !server.account2.length);
   const localHas = local && (
     (local.account1 && local.account1.length) ||
     (local.account2 && local.account2.length)
   );
+  const pick = (s, l, key, def) => (s && s[key] != null ? s[key] : (l && l[key] != null ? l[key] : def));
   if (serverEmpty && localHas) {
     return {
       account1: local.account1 || [],
       account2: local.account2 || [],
-      reserva_pct: local.reserva_pct != null ? local.reserva_pct : (server.reserva_pct || 25)
+      reserva_pct: pick(local, server, 'reserva_pct', 25),
+      goal_mensual: pick(local, server, 'goal_mensual', 0),
+      goal_enabled: pick(local, server, 'goal_enabled', false)
     };
   }
-  // Si el servidor tiene datos, priorizar servidor (y actualizar local)
   return {
     account1: (server.account1 && server.account1.length) ? server.account1 : (local?.account1 || []),
     account2: (server.account2 && server.account2.length) ? server.account2 : (local?.account2 || []),
-    reserva_pct: server.reserva_pct != null ? server.reserva_pct : (local?.reserva_pct || 25)
+    reserva_pct: pick(server, local, 'reserva_pct', 25),
+    goal_mensual: pick(server, local, 'goal_mensual', 0),
+    goal_enabled: pick(server, local, 'goal_enabled', false)
   };
 }
 
@@ -1326,6 +1435,55 @@ async function saveReserva() {
   await saveMovimientos();
   document.getElementById('reserva-status').textContent = '✓ Guardado (' + MOV.reserva_pct + '%)';
   renderDiario();
+}
+
+async function saveGoal() {
+  MOV.goal_mensual = Number(document.getElementById('goal-mensual').value) || 0;
+  MOV.goal_enabled = document.getElementById('goal-enabled').value === '1';
+  await saveMovimientos();
+  document.getElementById('goal-status').textContent =
+    MOV.goal_enabled ? ('✓ Meta activa: ' + MOV.goal_mensual + ' U') : '✓ Meta desactivada';
+  renderGoalBar();
+}
+
+function exportMovimientos() {
+  const payload = {
+    account1: MOV.account1 || [],
+    account2: MOV.account2 || [],
+    reserva_pct: MOV.reserva_pct || 25,
+    goal_mensual: MOV.goal_mensual || 0,
+    goal_enabled: !!MOV.goal_enabled,
+    exported_at: new Date().toISOString()
+  };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+  a.download = 'lighter-movimientos-backup.json';
+  a.click();
+  const el = document.getElementById('mov-backup-status');
+  if (el) el.textContent = 'Backup descargado. Guárdalo fuera del servidor (Drive, PC…).';
+}
+
+async function importMovimientos(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || (!data.account1 && !data.account2)) throw new Error('JSON inválido');
+    MOV.account1 = data.account1 || [];
+    MOV.account2 = data.account2 || [];
+    if (data.reserva_pct != null) MOV.reserva_pct = data.reserva_pct;
+    if (data.goal_mensual != null) MOV.goal_mensual = data.goal_mensual;
+    if (data.goal_enabled != null) MOV.goal_enabled = data.goal_enabled;
+    await saveMovimientos();
+    renderMovimientos();
+    renderStats();
+    document.getElementById('mov-backup-status').textContent =
+      '✓ Importado: ' + (MOV.account1.length + MOV.account2.length) + ' movimientos. Guardado en servidor + local.';
+  } catch (e) {
+    document.getElementById('mov-backup-status').textContent = 'Error al importar: ' + e.message;
+  }
+  ev.target.value = '';
 }
 
 // ═══════════════════════════════════════
