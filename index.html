@@ -379,6 +379,31 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 .goal-bar-fill.over { background: linear-gradient(90deg, #22d3ee, var(--green)); }
 .goal-bar-fill.neg { background: linear-gradient(90deg, var(--red), #fb7185); }
 
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-share:hover {
+  color: var(--green);
+  border-color: var(--green);
+  box-shadow: 0 0 12px rgba(52,211,153,.25);
+}
+.btn-share i { font-size: 16px; }
+.btn-share.copied {
+  color: var(--green);
+  border-color: var(--green);
+}
+
 /* Config */
 .config-card {
   background: var(--card);
@@ -563,10 +588,10 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
             <thead>
               <tr>
                 <th>Fecha</th><th>Trades</th><th>P&L trades</th><th>Funding</th>
-                <th>Total</th><th>% Día</th><th>WR</th><th>Reserva</th>
+                <th>Total</th><th>% Día</th><th>WR</th><th>Reserva</th><th></th>
               </tr>
             </thead>
-            <tbody id="tbody-diario"><tr><td colspan="8" class="empty">Conecta el servidor en Config</td></tr></tbody>
+            <tbody id="tbody-diario"><tr><td colspan="9" class="empty">Conecta el servidor en Config</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -595,8 +620,8 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
       <div class="pane" id="pane-semanal">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
-            <tbody id="tbody-semanal"><tr><td colspan="7" class="empty">—</td></tr></tbody>
+            <thead><tr><th>Semana</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th><th></th></tr></thead>
+            <tbody id="tbody-semanal"><tr><td colspan="8" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -605,8 +630,8 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
       <div class="pane" id="pane-mensual">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th></tr></thead>
-            <tbody id="tbody-mensual"><tr><td colspan="7" class="empty">—</td></tr></tbody>
+            <thead><tr><th>Mes</th><th>Trades</th><th>P&L</th><th>Funding</th><th>Total</th><th>WR</th><th>Reserva</th><th></th></tr></thead>
+            <tbody id="tbody-mensual"><tr><td colspan="8" class="empty">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1031,6 +1056,220 @@ function weekKey(tsMs) {
 // ═══════════════════════════════════════
 // DIARIO
 // ═══════════════════════════════════════
+function accountLabel() {
+  return currentAccount === 1 ? 'Lighter 1' : currentAccount === 2 ? 'Lighter 2' : 'Hyperliquid';
+}
+
+function shareBtnHtml(payload) {
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  return '<td style="text-align:center;width:40px;">'
+    + '<button type="button" class="btn-share" title="Compartir tarjeta" data-share="' + b64 + '" onclick="sharePeriod(this)">'
+    + '<i class="ti ti-share"></i></button></td>';
+}
+
+function fmtMoney(n) {
+  const x = Number(n) || 0;
+  const abs = Math.abs(x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (x < 0 ? '-$' : '$') + abs;
+}
+
+function buildShareCard(data) {
+  const W = 1080, H = 1080;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Fondo oscuro + glow
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#030806');
+  bg.addColorStop(0.45, '#06140f');
+  bg.addColorStop(1, '#020403');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Halo verde
+  const glow = ctx.createRadialGradient(W * 0.72, H * 0.55, 40, W * 0.72, H * 0.55, 520);
+  glow.addColorStop(0, 'rgba(34,197,94,0.28)');
+  glow.addColorStop(0.5, 'rgba(34,197,94,0.08)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Rejilla sutil
+  ctx.strokeStyle = 'rgba(34,197,94,0.06)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 48) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 48) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Mini sparkline decorativa
+  ctx.beginPath();
+  ctx.strokeStyle = data.total >= 0 ? '#22c55e' : '#ef4444';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  const pts = 12;
+  let py = H * 0.72;
+  ctx.moveTo(60, py);
+  for (let i = 1; i <= pts; i++) {
+    const px = 60 + (i / pts) * (W * 0.42);
+    py = H * 0.72 - Math.sin(i * 0.7) * 40 - (data.total >= 0 ? i * 6 : -i * 4);
+    ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  // Relleno bajo la línea
+  ctx.lineTo(60 + W * 0.42, H);
+  ctx.lineTo(60, H);
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  fillGrad.addColorStop(0, data.total >= 0 ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)');
+  fillGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+
+  // Logo / marca (sin LeyDex)
+  ctx.fillStyle = '#22c55e';
+  ctx.beginPath();
+  ctx.arc(72, 72, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = '#22c55e';
+  ctx.shadowBlur = 16;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.font = '700 28px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#ecfdf5';
+  ctx.fillText('Lighter Tracker', 96, 82);
+
+  // Título periodo
+  const tipoLabel = data.tipo === 'dia' ? 'RENDIMIENTO Daily'
+    : data.tipo === 'semana' ? 'RENDIMIENTO Weekly'
+    : 'RENDIMIENTO Monthly';
+  ctx.font = '600 26px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText(tipoLabel, 64, 180);
+
+  ctx.font = '500 22px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('PnL Realizado', 64, 230);
+
+  // Número grande
+  ctx.font = '800 92px Inter, system-ui, sans-serif';
+  ctx.fillStyle = data.total >= 0 ? '#4ade80' : '#f87171';
+  ctx.shadowColor = data.total >= 0 ? 'rgba(74,222,128,0.45)' : 'rgba(248,113,113,0.35)';
+  ctx.shadowBlur = 24;
+  ctx.fillText(fmtMoney(data.total), 64, 340);
+  ctx.shadowBlur = 0;
+
+  // Detalle cuenta
+  ctx.font = '600 18px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText((data.cuenta || '').toUpperCase(), 64, 420);
+  ctx.font = '700 28px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillText(fmtMoney(data.total), 64, 460);
+
+  // Stats secundarios
+  const statsY = 560;
+  const items = [
+    ['TRADES', String(data.trades ?? 0)],
+    ['P&L', fmtMoney(data.pnl)],
+    ['FUNDING', fmtMoney(data.funding)],
+    ['WR', (data.wr ?? 0) + '%']
+  ];
+  items.forEach((it, i) => {
+    const x = 64 + i * 240;
+    ctx.font = '600 14px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(it[0], x, statsY);
+    ctx.font = '700 24px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillText(it[1], x, statsY + 36);
+  });
+
+  // Círculo decorativo tipo "toro" abstracto (sin imagen)
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(34,197,94,0.35)';
+  ctx.lineWidth = 3;
+  ctx.arc(W * 0.78, H * 0.42, 160, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(34,197,94,0.15)';
+  ctx.lineWidth = 2;
+  ctx.arc(W * 0.78, H * 0.42, 210, 0, Math.PI * 2);
+  ctx.stroke();
+  // Flecha alcista abstracta
+  ctx.fillStyle = data.total >= 0 ? 'rgba(74,222,128,0.9)' : 'rgba(248,113,113,0.9)';
+  ctx.beginPath();
+  const cx = W * 0.78, cy = H * 0.42;
+  if (data.total >= 0) {
+    ctx.moveTo(cx, cy - 70);
+    ctx.lineTo(cx + 55, cy + 40);
+    ctx.lineTo(cx - 55, cy + 40);
+  } else {
+    ctx.moveTo(cx, cy + 70);
+    ctx.lineTo(cx + 55, cy - 40);
+    ctx.lineTo(cx - 55, cy - 40);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Footer periodo
+  ctx.font = '500 18px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#64748b';
+  const footer = (data.periodo || '') + '  ·  ' + (data.cuenta || '');
+  ctx.fillText(footer, 64, H - 56);
+
+  return canvas;
+}
+
+async function sharePeriod(btn) {
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-share')))));
+    const canvas = buildShareCard(data);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('No se pudo generar la imagen');
+    const file = new File([blob], 'lighter-tracker-' + (data.periodo || 'share') + '.png', { type: 'image/png' });
+    const sign = n => (n >= 0 ? '+' : '') + Number(n).toFixed(2);
+    const text = 'Lighter Tracker · ' + (data.tipo === 'dia' ? 'Día ' : data.tipo === 'semana' ? 'Semana ' : 'Mes ')
+      + data.periodo + ' · Total ' + sign(data.total) + ' U';
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Lighter Tracker', text: text });
+    } else if (navigator.share) {
+      // Algunos móviles no aceptan files: descargar + texto
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+      try { await navigator.share({ title: 'Lighter Tracker', text: text }); } catch (_) {}
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    btn.classList.add('copied');
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = 'ti ti-check';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      if (icon) icon.className = 'ti ti-share';
+    }, 1500);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    console.error(e);
+    alert('No se pudo compartir la tarjeta');
+  }
+}
+
 function renderDiario() {
   const closes = T.filter(t => t.tradeType === 'close' && t.pnl !== null && !isNaN(t.pnl));
   const dayKey = ts => new Date(toMs(ts)).toISOString().slice(0, 10);
@@ -1051,7 +1290,7 @@ function renderDiario() {
   uniqueDays.sort((a, b) => b.localeCompare(a));
 
   if (!uniqueDays.length) {
-    document.getElementById('tbody-diario').innerHTML = '<tr><td colspan="8" class="empty">Sin datos.</td></tr>';
+    document.getElementById('tbody-diario').innerHTML = '<tr><td colspan="9" class="empty">Sin datos.</td></tr>';
     return;
   }
 
@@ -1085,6 +1324,11 @@ function renderDiario() {
       + '<td><span class="' + (dayPct >= 0 ? 'pos' : 'neg') + '">' + (dayPct >= 0 ? '+' : '') + dayPct.toFixed(2) + '%</span></td>'
       + '<td>' + wr + '%</td>'
       + '<td>' + reservaStr + '</td>'
+      + shareBtnHtml({
+        tipo: 'dia', periodo: day, cuenta: accountLabel(),
+        trades: d.count, pnl: d.pnl, funding: fund, total: total,
+        pct: dayPct, wr: wr, reserva: reserva
+      })
       + '</tr>';
   }).join('');
 }
@@ -1102,7 +1346,7 @@ function renderMensual() {
     ...Object.keys(fundMap).filter(k => Math.abs(fundMap[k] || 0) > 0.0001)
   ])].sort().reverse();
   if (!keys.length) {
-    document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+    document.getElementById('tbody-mensual').innerHTML = '<tr><td colspan="8" class="empty">Sin datos</td></tr>';
     return;
   }
   document.getElementById('tbody-mensual').innerHTML = keys.map(k => {
@@ -1119,7 +1363,13 @@ function renderMensual() {
       + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
       + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
       + '<td>' + wr + '%</td>'
-      + '<td>' + reservaStr + '</td></tr>';
+      + '<td>' + reservaStr + '</td>'
+      + shareBtnHtml({
+        tipo: 'mes', periodo: k, cuenta: accountLabel(),
+        trades: d.count, pnl: d.pnl, funding: fund, total: total,
+        wr: wr, reserva: reserva
+      })
+      + '</tr>';
   }).join('');
 }
 
@@ -1132,7 +1382,7 @@ function renderSemanal() {
     ...Object.keys(fundMap).filter(k => Math.abs(fundMap[k] || 0) > 0.0001)
   ])].sort().reverse().slice(0, 20);
   if (!keys.length) {
-    document.getElementById('tbody-semanal').innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+    document.getElementById('tbody-semanal').innerHTML = '<tr><td colspan="8" class="empty">Sin datos</td></tr>';
     return;
   }
   document.getElementById('tbody-semanal').innerHTML = keys.map(k => {
@@ -1149,7 +1399,13 @@ function renderSemanal() {
       + '<td><span class="' + (fund >= 0 ? 'pos' : 'neg') + '">' + (fund >= 0 ? '+' : '') + fund.toFixed(2) + '</span></td>'
       + '<td><span class="' + (total >= 0 ? 'pos' : 'neg') + '">' + (total >= 0 ? '+' : '') + total.toFixed(2) + '</span></td>'
       + '<td>' + wr + '%</td>'
-      + '<td>' + reservaStr + '</td></tr>';
+      + '<td>' + reservaStr + '</td>'
+      + shareBtnHtml({
+        tipo: 'semana', periodo: k, cuenta: accountLabel(),
+        trades: d.count, pnl: d.pnl, funding: fund, total: total,
+        wr: wr, reserva: reserva
+      })
+      + '</tr>';
   }).join('');
 }
 
