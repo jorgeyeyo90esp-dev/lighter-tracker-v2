@@ -1073,154 +1073,143 @@ function fmtMoney(n) {
   return (x < 0 ? '-$' : '$') + abs;
 }
 
-function buildShareCard(data) {
-  const W = 1080, H = 1080;
+var _shareBgImg = null;
+function loadShareBg() {
+  if (_shareBgImg && _shareBgImg.complete) return Promise.resolve(_shareBgImg);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { _shareBgImg = img; resolve(img); };
+    img.onerror = () => reject(new Error('No se pudo cargar share-bg.jpg'));
+    // Rutas posibles (GitHub Pages / local)
+    img.src = 'share-bg.jpg';
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function buildShareCard(data) {
+  const W = 1080, H = 1620;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Fondo oscuro + glow
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#030806');
-  bg.addColorStop(0.45, '#06140f');
-  bg.addColorStop(1, '#020403');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  // Halo verde
-  const glow = ctx.createRadialGradient(W * 0.72, H * 0.55, 40, W * 0.72, H * 0.55, 520);
-  glow.addColorStop(0, 'rgba(34,197,94,0.28)');
-  glow.addColorStop(0.5, 'rgba(34,197,94,0.08)');
-  glow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  // Rejilla sutil
-  ctx.strokeStyle = 'rgba(34,197,94,0.06)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 48) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 48) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  // Fondo: foto del toro
+  try {
+    const img = await loadShareBg();
+    ctx.drawImage(img, 0, 0, W, H);
+  } catch (_) {
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0a0a0a');
+    bg.addColorStop(1, '#1a1208');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
   }
 
-  // Mini sparkline decorativa
-  ctx.beginPath();
-  ctx.strokeStyle = data.total >= 0 ? '#22c55e' : '#ef4444';
-  ctx.lineWidth = 4;
-  ctx.lineJoin = 'round';
-  const pts = 12;
-  let py = H * 0.72;
-  ctx.moveTo(60, py);
-  for (let i = 1; i <= pts; i++) {
-    const px = 60 + (i / pts) * (W * 0.42);
-    py = H * 0.72 - Math.sin(i * 0.7) * 40 - (data.total >= 0 ? i * 6 : -i * 4);
-    ctx.lineTo(px, py);
-  }
-  ctx.stroke();
-  // Relleno bajo la línea
-  ctx.lineTo(60 + W * 0.42, H);
-  ctx.lineTo(60, H);
-  ctx.closePath();
-  const fillGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
-  fillGrad.addColorStop(0, data.total >= 0 ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)');
-  fillGrad.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = fillGrad;
-  ctx.fill();
+  // Oscurecer zona superior e izquierda para legibilidad
+  const topShade = ctx.createLinearGradient(0, 0, 0, 320);
+  topShade.addColorStop(0, 'rgba(0,0,0,0.75)');
+  topShade.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = topShade;
+  ctx.fillRect(0, 0, W, 320);
 
-  // Logo / marca (sin LeyDex)
-  ctx.fillStyle = '#22c55e';
-  ctx.beginPath();
-  ctx.arc(72, 72, 10, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowColor = '#22c55e';
-  ctx.shadowBlur = 16;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.font = '700 28px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#ecfdf5';
-  ctx.fillText('Lighter Tracker', 96, 82);
+  const leftShade = ctx.createLinearGradient(0, 0, 520, 0);
+  leftShade.addColorStop(0, 'rgba(0,0,0,0.72)');
+  leftShade.addColorStop(0.7, 'rgba(0,0,0,0.45)');
+  leftShade.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = leftShade;
+  ctx.fillRect(0, 0, 560, H);
 
-  // Título periodo
-  const tipoLabel = data.tipo === 'dia' ? 'RENDIMIENTO Daily'
-    : data.tipo === 'semana' ? 'RENDIMIENTO Weekly'
-    : 'RENDIMIENTO Monthly';
-  ctx.font = '600 26px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#4ade80';
-  ctx.fillText(tipoLabel, 64, 180);
+  // Título marca (sustituye TRADING & CRIPTOMONEDAS)
+  ctx.textAlign = 'left';
+  ctx.font = '800 52px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#f5f5f4';
+  ctx.fillText('JORGEYEYO90', 48, 90);
+  ctx.font = '700 36px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#d4a017';
+  ctx.fillText('TRADING TRACKING', 48, 138);
 
-  ctx.font = '500 22px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText('PnL Realizado', 64, 230);
-
-  // Número grande
-  ctx.font = '800 92px Inter, system-ui, sans-serif';
-  ctx.fillStyle = data.total >= 0 ? '#4ade80' : '#f87171';
-  ctx.shadowColor = data.total >= 0 ? 'rgba(74,222,128,0.45)' : 'rgba(248,113,113,0.35)';
-  ctx.shadowBlur = 24;
-  ctx.fillText(fmtMoney(data.total), 64, 340);
-  ctx.shadowBlur = 0;
-
-  // Detalle cuenta
-  ctx.font = '600 18px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#64748b';
-  ctx.fillText((data.cuenta || '').toUpperCase(), 64, 420);
-  ctx.font = '700 28px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillText(fmtMoney(data.total), 64, 460);
-
-  // Stats secundarios
-  const statsY = 560;
-  const items = [
-    ['TRADES', String(data.trades ?? 0)],
-    ['P&L', fmtMoney(data.pnl)],
-    ['FUNDING', fmtMoney(data.funding)],
-    ['WR', (data.wr ?? 0) + '%']
-  ];
-  items.forEach((it, i) => {
-    const x = 64 + i * 240;
-    ctx.font = '600 14px Inter, system-ui, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(it[0], x, statsY);
-    ctx.font = '700 24px Inter, system-ui, sans-serif';
-    ctx.fillStyle = '#f1f5f9';
-    ctx.fillText(it[1], x, statsY + 36);
-  });
-
-  // Círculo decorativo tipo "toro" abstracto (sin imagen)
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(34,197,94,0.35)';
-  ctx.lineWidth = 3;
-  ctx.arc(W * 0.78, H * 0.42, 160, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(34,197,94,0.15)';
-  ctx.lineWidth = 2;
-  ctx.arc(W * 0.78, H * 0.42, 210, 0, Math.PI * 2);
-  ctx.stroke();
-  // Flecha alcista abstracta
-  ctx.fillStyle = data.total >= 0 ? 'rgba(74,222,128,0.9)' : 'rgba(248,113,113,0.9)';
-  ctx.beginPath();
-  const cx = W * 0.78, cy = H * 0.42;
-  if (data.total >= 0) {
-    ctx.moveTo(cx, cy - 70);
-    ctx.lineTo(cx + 55, cy + 40);
-    ctx.lineTo(cx - 55, cy + 40);
-  } else {
-    ctx.moveTo(cx, cy + 70);
-    ctx.lineTo(cx + 55, cy - 40);
-    ctx.lineTo(cx - 55, cy - 40);
-  }
-  ctx.closePath();
-  ctx.fill();
-
-  // Footer periodo
+  // Subtítulo periodo
+  const tipoLabel = data.tipo === 'dia' ? 'RENDIMIENTO DIARIO'
+    : data.tipo === 'semana' ? 'RENDIMIENTO SEMANAL'
+    : 'RENDIMIENTO MENSUAL';
+  ctx.font = '600 20px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#e7e5e4';
+  ctx.fillText(tipoLabel, 48, 190);
   ctx.font = '500 18px Inter, system-ui, sans-serif';
-  ctx.fillStyle = '#64748b';
-  const footer = (data.periodo || '') + '  ·  ' + (data.cuenta || '');
-  ctx.fillText(footer, 64, H - 56);
+  ctx.fillStyle = '#a8a29e';
+  ctx.fillText((data.periodo || '') + '  ·  ' + (data.cuenta || ''), 48, 220);
+
+  // Panel izquierdo con datos de la app
+  const panelX = 40, panelY = 260, panelW = 420;
+  function drawPanel(y, title, rows) {
+    const ph = 36 + rows.length * 42 + 20;
+    ctx.fillStyle = 'rgba(12,12,14,0.82)';
+    roundRect(ctx, panelX, y, panelW, ph, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(212,160,23,0.35)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, panelX, y, panelW, ph, 14);
+    ctx.stroke();
+
+    ctx.font = '700 15px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#d4a017';
+    ctx.fillText(title, panelX + 18, y + 28);
+
+    rows.forEach((r, i) => {
+      const ry = y + 58 + i * 42;
+      ctx.font = '600 16px Inter, system-ui, sans-serif';
+      ctx.fillStyle = '#a8a29e';
+      ctx.fillText(r[0], panelX + 18, ry);
+      ctx.font = '700 20px Inter, system-ui, sans-serif';
+      ctx.fillStyle = r[2] || '#fafaf9';
+      ctx.textAlign = 'right';
+      ctx.fillText(r[1], panelX + panelW - 18, ry);
+      ctx.textAlign = 'left';
+    });
+    return y + ph + 16;
+  }
+
+  const pos = data.total >= 0 ? '#4ade80' : '#f87171';
+  const posPnl = data.pnl >= 0 ? '#4ade80' : '#f87171';
+  const posFund = data.funding >= 0 ? '#4ade80' : '#f87171';
+
+  let y = panelY;
+  y = drawPanel(y, 'PNL REALIZADO', [
+    ['TOTAL', fmtMoney(data.total), pos],
+    ['P&L TRADES', fmtMoney(data.pnl), posPnl],
+    ['FUNDING', fmtMoney(data.funding), posFund]
+  ]);
+
+  const rows2 = [
+    ['TRADES', String(data.trades ?? 0), '#fafaf9'],
+    ['WINRATE', (data.wr ?? 0) + '%', '#fafaf9']
+  ];
+  if (data.pct != null) rows2.push(['% DÍA', (data.pct >= 0 ? '+' : '') + Number(data.pct).toFixed(2) + '%', data.pct >= 0 ? '#4ade80' : '#f87171']);
+  if (data.reserva != null) rows2.push(['RESERVA', '+' + Number(data.reserva).toFixed(2), '#4ade80']);
+  y = drawPanel(y, 'DETALLE', rows2);
+
+  y = drawPanel(y, 'CUENTA', [
+    ['EXCHANGE', (data.cuenta || '—').toUpperCase(), '#fafaf9'],
+    ['PERIODO', String(data.periodo || '—'), '#fafaf9']
+  ]);
+
+  // Frase inferior izquierda
+  ctx.font = '700 16px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#e7e5e4';
+  ctx.fillText('PLANIFICA TU ENTRADA.', 48, H - 100);
+  ctx.fillText('PROTEGE TU CAPITAL.', 48, H - 72);
+  ctx.fillStyle = '#d4a017';
+  ctx.fillText('ASEGURA TUS GANANCIAS.', 48, H - 44);
 
   return canvas;
 }
@@ -1228,25 +1217,25 @@ function buildShareCard(data) {
 async function sharePeriod(btn) {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-share')))));
-    const canvas = buildShareCard(data);
+    const canvas = await buildShareCard(data);
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     if (!blob) throw new Error('No se pudo generar la imagen');
-    const file = new File([blob], 'lighter-tracker-' + (data.periodo || 'share') + '.png', { type: 'image/png' });
+    const file = new File([blob], 'jorgeyeyo90-' + (data.periodo || 'share') + '.png', { type: 'image/png' });
     const sign = n => (n >= 0 ? '+' : '') + Number(n).toFixed(2);
-    const text = 'Lighter Tracker · ' + (data.tipo === 'dia' ? 'Día ' : data.tipo === 'semana' ? 'Semana ' : 'Mes ')
+    const text = 'JorgeYeyo90 TradingTracking · '
+      + (data.tipo === 'dia' ? 'Día ' : data.tipo === 'semana' ? 'Semana ' : 'Mes ')
       + data.periodo + ' · Total ' + sign(data.total) + ' U';
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Lighter Tracker', text: text });
+      await navigator.share({ files: [file], title: 'JorgeYeyo90 TradingTracking', text: text });
     } else if (navigator.share) {
-      // Algunos móviles no aceptan files: descargar + texto
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = file.name;
       a.click();
       URL.revokeObjectURL(url);
-      try { await navigator.share({ title: 'Lighter Tracker', text: text }); } catch (_) {}
+      try { await navigator.share({ title: 'JorgeYeyo90 TradingTracking', text: text }); } catch (_) {}
     } else {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
