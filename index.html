@@ -550,7 +550,8 @@ tr:nth-child(even) td { background: rgba(255,255,255,.015); }
         <div class="stat"><div class="stat-label">Funding</div><div class="stat-val neu" id="s-fund">—</div><div class="stat-sub">acumulado</div></div>
         <div class="stat"><div class="stat-label">uPnL</div><div class="stat-val neu" id="s-upnl">—</div><div class="stat-sub" id="s-upnl-sub">posiciones abiertas</div></div>
         <div class="stat"><div class="stat-label">Fees</div><div class="stat-val neu" id="s-fee">—</div><div class="stat-sub">comisiones</div></div>
-        <div class="stat"><div class="stat-label">Capital</div><div class="stat-val neu" id="s-total">—</div><div class="stat-sub" id="s-total-sub">neto + P&L</div></div>
+        <div class="stat"><div class="stat-label">Capital aportado</div><div class="stat-val neu" id="s-cap">—</div><div class="stat-sub" id="s-cap-sub">depósitos − retiros</div></div>
+        <div class="stat"><div class="stat-label">Equity estimado</div><div class="stat-val neu" id="s-total">—</div><div class="stat-sub" id="s-total-sub">cap + P&L − fees + uPnL</div></div>
         <div class="stat"><div class="stat-label">Rentabilidad</div><div class="stat-val neu" id="s-rent">—</div><div class="stat-sub" id="s-rent-sub">sobre capital</div></div>
         <div class="stat"><div class="stat-label">Winrate</div><div class="stat-val neu" id="s-wr">—</div><div class="stat-sub" id="s-wr-sub">—</div></div>
       </div>
@@ -820,7 +821,7 @@ function switchAccount(n) {
 }
 
 function clearStats() {
-  ['s-pnl','s-today','s-p7','s-fund','s-upnl','s-fee','s-total','s-rent','s-wr'].forEach(id => {
+  ['s-pnl','s-today','s-p7','s-fund','s-upnl','s-fee','s-cap','s-total','s-rent','s-wr'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.textContent = '—'; el.className = 'stat-val neu'; }
   });
@@ -963,27 +964,42 @@ function renderGoalBar() {
 
 function renderStats() {
   const cap = getCapital();
-  const totalPnl = S.total_pnl || 0;
-  const totalAccount = cap + totalPnl;
-  const rent = cap > 0 ? (totalPnl / cap * 100) : 0;
+  const totalPnl = Number(S.total_pnl || 0);       // trades + funding (realizado)
+  const fees = Number(S.fee_total || 0);
+  const upnl = Number(S.unrealized_pnl || 0);
+  // Equity ≈ capital aportado + P&L realizado − fees + uPnL (más cerca de Lighter)
+  const equity = cap + totalPnl - fees + upnl;
+  const rent = cap > 0 ? ((totalPnl - fees + upnl) / cap * 100) : 0;
 
   setPnl('s-pnl', totalPnl);
   setPnl('s-today', S.today_pnl || 0);
   setPnl('s-p7', S.p7 || 0);
   setPnl('s-fund', S.funding_total || 0);
-  setPnl('s-upnl', S.unrealized_pnl || 0);
+  setPnl('s-upnl', upnl);
   const upnlSub = document.getElementById('s-upnl-sub');
   if (upnlSub) upnlSub.textContent = (S.open_positions || 0) + ' abiertas';
-  setPnl('s-fee', -(S.fee_total || 0));
-  setPnl('s-total', totalAccount, 'depósitos + P&L');
-  // Rentabilidad en % (no en U)
+  setPnl('s-fee', -fees);
+
+  // Capital aportado (solo movimientos)
+  const capEl = document.getElementById('s-cap');
+  if (capEl) {
+    capEl.textContent = cap.toFixed(2) + ' U';
+    capEl.className = 'stat-val neu';
+  }
+  const capSub = document.getElementById('s-cap-sub');
+  if (capSub) capSub.textContent = 'depósitos − retiros';
+
+  // Equity estimado
+  setPnl('s-total', equity, 'cap + P&L − fees + uPnL');
+
+  // Rentabilidad sobre capital aportado
   const rentEl = document.getElementById('s-rent');
   if (rentEl) {
     rentEl.textContent = (rent >= 0 ? '+' : '') + rent.toFixed(2) + '%';
     rentEl.className = 'stat-val ' + (rent > 0 ? 'pos' : rent < 0 ? 'neg' : 'neu');
   }
   const rentSub = document.getElementById('s-rent-sub');
-  if (rentSub) rentSub.textContent = 'sobre capital';
+  if (rentSub) rentSub.textContent = 'sobre capital aportado';
   document.getElementById('s-wr').textContent = (S.win_rate || 0) + '%';
   document.getElementById('s-wr').className = 'stat-val neu';
   document.getElementById('s-wr-sub').textContent = (S.wins || 0) + 'W / ' + (S.losses || 0) + 'L';
